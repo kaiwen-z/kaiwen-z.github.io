@@ -147,6 +147,9 @@ $(document).ready(function(){
         $(".button-edge").prop('disabled', true);
         sim.setTool(TOOL.WIRE);
     });
+    $(".button-add").click(function(){
+        clearButtons();
+    });
 
     $(".button-not").click(function(){
         sim.setComponent(GATE.NOT);

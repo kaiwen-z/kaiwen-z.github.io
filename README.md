@@ -8,8 +8,6 @@ Simple logic sim is written in entirely in javascript, and relies on HTML5 Canva
 ### Demo
 A live demo version is available [here](https://kaiwen-z.github.io/canvas).
 
-The full repo including backend is WIP.
-
 ### Tools
 Add - brings up GUI to select a component to add
 
@@ -36,5 +34,4 @@ Generate truth tables of your circuit
 👤 **[kaiwen-z](https://github.com/kaiwen-z)**
 
 ## License
-
 [MIT](https://choosealicense.com/licenses/mit/)

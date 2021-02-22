@@ -126,14 +126,25 @@ $(document).ready(function(){
         }, speed);
     }
 
+    function clearButtons(){
+        $(".button-remove").prop('disabled', false);
+        $(".button-move").prop('disabled', false);
+        $(".button-edge").prop('disabled', false);
+    }
 
     $(".button-remove").click(function(){
+        clearButtons();
+        $(".button-remove").prop('disabled', true);
         sim.setTool(TOOL.DELETE);
     });
     $(".button-move").click(function(){
+        clearButtons();
+        $(".button-move").prop('disabled', true);
         sim.setTool(TOOL.MOVE);
     });
     $(".button-edge").click(function(){
+        clearButtons();
+        $(".button-edge").prop('disabled', true);
         sim.setTool(TOOL.WIRE);
     });
 

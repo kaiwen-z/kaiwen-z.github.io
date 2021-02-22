@@ -10,6 +10,7 @@ export class WireHandler{
         this.components = components;
         this.connectors = connectors;
         this.wires = wires;
+        this.wiretype = true;
         this.hover = null;
         this.drawing = false;
     }
@@ -36,6 +37,7 @@ export class WireHandler{
                     }
                     
                     //this.connectors[start].addWire(newWire);
+                    newWire.wiretype = this.wiretype;
                     newWire.updateHover(x,y);
                     this.wires[newWire.getID()] = newWire;
                 }
@@ -46,6 +48,7 @@ export class WireHandler{
                     else{
                         newWire = new Wire(id,this.connectors[end],null);
                     }
+                    newWire.wiretype = this.wiretype;
                     newWire.updateHover(x,y);
                     this.wires[newWire.getID()] = newWire;
                 }
@@ -59,6 +62,7 @@ export class WireHandler{
                 else{
                     newWire = new Wire(id,this.connectors[end],this.connectors[start]);
                 }
+                newWire.wiretype = this.wiretype;
                 this.wires[id] = newWire;
                 this.connectors[start].addWire(newWire);
                 this.connectors[end].addWire(newWire);
@@ -171,12 +175,14 @@ export class WireHandler{
                     if(this.connectors[key].getType() == CONNECTOR.IN){
                         let newWire = new Wire(uuidv4() ,null, this.connectors[key]);
                         newWire.updateHover(x,y);
+                        newWire.wiretype = this.wiretype;
                         this.wires[newWire.getID()] = newWire;
                         this.hover = newWire.getID();
                     }
                     else{
                         let newWire = new Wire(uuidv4(), this.connectors[key], null);
                         newWire.updateHover(x,y);
+                        newWire.wiretype = this.wiretype;
                         this.wires[newWire.getID()] = newWire;
                         this.hover = newWire.getID();
                     }

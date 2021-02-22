@@ -25,6 +25,8 @@ Move - Click and drag components to move them around
 Select between straight and square wire appearance
 
 Change simulation speed to see logic circuits in action
+  - lower delay means the sim runs faster
+  - higher delay means the sim runs slower
 
 Generate truth tables of your circuit
   - Truth tables require that the circuit be combinatorial in nature

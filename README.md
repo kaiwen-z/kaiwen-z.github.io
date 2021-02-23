@@ -6,7 +6,7 @@ The simulator can also produce truth tables and boolean equations expressing the
 Simple logic sim is written in entirely in javascript, and relies on HTML5 Canvas to render. Jquery libraries are imported for the purpose of easier form input.
 
 ### Demo
-A live demo version is available [here](https://kaiwen-z.github.io/canvas).
+A live demo version is available [HERE!](https://kaiwen-z.github.io/canvas).
 
 ### Tools
 Add - brings up GUI to select a component to add

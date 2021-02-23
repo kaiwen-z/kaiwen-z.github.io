@@ -20,15 +20,16 @@ Move - Click and drag components to move them around
 ![](media/LogicOutput.png) Logic Output (Required to generate truth tables)
 
 ## Features
+
+Generate truth tables of your circuit
+  - Truth tables require that the circuit be combinatorial in nature
+  - Only circuits attached to Logic Input AND Logic Output are processed
+
 Select between straight and square wire appearance
 
 Change simulation speed to see logic circuits in action
   - lower delay means the sim runs faster
   - higher delay means the sim runs slower
-
-Generate truth tables of your circuit
-  - Truth tables require that the circuit be combinatorial in nature
-  - Only circuits attached to Logic Input AND Logic Output are processed
 
 ## Author
 👤 **[kaiwen-z](https://github.com/kaiwen-z)**

@@ -8,7 +8,7 @@ Simple logic sim is written in entirely in javascript, and relies on HTML5 Canva
 ### Demo
 A live demo version is available [HERE!](https://kaiwen-z.github.io/canvas).
 
-[](demo.gif)
+![](demo.gif)
 
 ### Tools
 Add - brings up GUI to select a component to add

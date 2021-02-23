@@ -33,6 +33,14 @@ Change simulation speed to see logic circuits in action
   - lower delay means the sim runs faster
   - higher delay means the sim runs slower
 
+## Documentation
+
+Currently WIP but here are some tips:
+  - Circuits are modeled as directed graphs
+  - Boolean Equations trees are constructed with outputs as the root node, inputs are leaf nodes
+  - On evaluation, cyclic detection algorithm is run on the graph to ensure the drawn circuit is purely combinatorial
+  - Inputs are iterated over via binary counter to evaluate the truth table states
+
 ## Author
 👤 **[kaiwen-z](https://github.com/kaiwen-z)**
 

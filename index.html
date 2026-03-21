@@ -3,7 +3,7 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>Kaiwen Z — Projects</title>
+  <title>Kevin Zhu (KaiwenZ) — Projects</title>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
   <style>
     *, *::before, *::after { margin: 0; padding: 0; box-sizing: border-box; }
@@ -29,6 +29,14 @@
       color: var(--text);
       line-height: 1.6;
       min-height: 100vh;
+    }
+
+    .alias {
+      color: #888888;       /* Slightly grey color */
+      font-size: 0.5em;     /* Makes text half the size of the main header */
+      font-weight: normal;  /* Removes bold styling inherited from h1 */
+      margin-left: 10px;    /* Adds a small space between name and alias */
+      vertical-align: middle; /* Ensures it sits nicely inline */
     }
 
     a { color: var(--accent); text-decoration: none; transition: color 0.2s; }
@@ -214,17 +222,36 @@
       position: relative;
       overflow: hidden;
       aspect-ratio: 16 / 10;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 20px;
     }
 
     .project-thumb img {
       width: 100%;
       height: 100%;
       object-fit: cover;
+      border-radius: var(--radius);
       transition: transform 0.4s ease;
+    }
+
+    .project-thumb::after {
+      content: '';
+      position: absolute;
+      inset: 20px;
+      border-radius: var(--radius);
+      box-shadow: inset 0 0 25px 12px var(--bg-card);
+      pointer-events: none;
+      z-index: 1;
     }
 
     .project-card:hover .project-thumb img {
       transform: scale(1.03);
+    }
+
+    .project-card:hover .project-thumb::after {
+      box-shadow: inset 0 0 25px 12px var(--bg-card-hover);
     }
 
     .project-info {
@@ -298,6 +325,159 @@
       color: #fff;
     }
 
+    /* --- ABOUT SECTIONS --- */
+    .about-section {
+      max-width: 960px;
+      margin: 0 auto;
+      padding: 0 24px 60px;
+    }
+
+    .about-section + .about-section { padding-top: 20px; }
+
+    .about-heading {
+      font-size: 0.85rem;
+      color: var(--accent);
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 0.06em;
+      margin-bottom: 8px;
+    }
+
+    .about-title {
+      font-size: 1.5rem;
+      font-weight: 700;
+      letter-spacing: -0.02em;
+      margin-bottom: 24px;
+    }
+
+    /* Skills grid */
+    .skills-grid {
+      display: flex;
+      flex-direction: column;
+      gap: 20px;
+    }
+
+    .skill-category h4 {
+      font-size: 0.8rem;
+      font-weight: 600;
+      color: var(--text-muted);
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+      margin-bottom: 10px;
+    }
+
+    .skill-pills {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+    }
+
+    .skill-pill {
+      font-size: 0.82rem;
+      font-weight: 500;
+      padding: 6px 16px;
+      border-radius: 20px;
+      background: var(--bg-card);
+      border: 1px solid var(--border);
+      color: var(--text);
+      transition: all 0.2s ease;
+    }
+
+    .skill-pill:hover {
+      border-color: var(--accent);
+      background: rgba(99, 102, 241, 0.08);
+      transform: translateY(-1px);
+    }
+
+    .skill-pill.highlight {
+      border-color: rgba(99, 102, 241, 0.35);
+      background: rgba(99, 102, 241, 0.1);
+    }
+
+    /* Experience timeline */
+    .exp-list {
+      display: flex;
+      flex-direction: column;
+      gap: 0;
+    }
+
+    .exp-item {
+      display: grid;
+      grid-template-columns: 160px 1fr;
+      gap: 24px;
+      padding: 24px 0;
+      border-bottom: 1px solid var(--border);
+      transition: background 0.2s ease;
+    }
+
+    .exp-item:first-child { padding-top: 0; }
+    .exp-item:last-child { border-bottom: none; }
+
+    .exp-date {
+      font-size: 0.82rem;
+      color: var(--text-muted);
+      font-weight: 500;
+      padding-top: 2px;
+    }
+
+    .exp-content h4 {
+      font-size: 1rem;
+      font-weight: 700;
+      margin-bottom: 4px;
+      letter-spacing: -0.01em;
+    }
+
+    .exp-org {
+      font-size: 0.88rem;
+      color: var(--accent);
+      font-weight: 600;
+      margin-bottom: 8px;
+    }
+
+    .exp-desc {
+      font-size: 0.88rem;
+      color: var(--text-muted);
+      line-height: 1.6;
+    }
+
+    .exp-techs {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 6px;
+      margin-top: 10px;
+    }
+
+    .exp-tech {
+      font-size: 0.72rem;
+      font-weight: 600;
+      padding: 3px 10px;
+      border-radius: 14px;
+      background: rgba(99, 102, 241, 0.08);
+      color: var(--accent);
+    }
+
+    /* Divider line between major sections */
+    .section-divider {
+      max-width: 960px;
+      margin: 0 auto;
+      padding: 0 24px;
+    }
+
+    .section-divider hr {
+      border: none;
+      border-top: 1px solid var(--border);
+      margin: 0;
+    }
+
+    @media (max-width: 700px) {
+      .exp-item {
+        grid-template-columns: 1fr;
+        gap: 4px;
+      }
+
+      .about-section { padding: 0 20px 40px; }
+    }
+
     /* --- FOOTER --- */
     footer {
       border-top: 1px solid var(--border);
@@ -341,13 +521,14 @@
 
   <section class="hero" id="about">
     <p class="hero-greeting">Hello, I'm</p>
-    <h1>Kaiwen <span class="accent">Z.</span></h1>
+    <h1>Kevin <span class="accent">Zhu</span><span class="alias">(Alias: KaiwenZ)</span></h1>
     <p class="hero-desc">
-      Developer interested in building interactive tools, simulations, and software that makes complex ideas more accessible. Take a look at some of my projects below.
+      Computer Science graduate from the University of Toronto with professional experience in cloud virtualization at AMD and a passion for building interactive tools — from automotive diagnostics to circuit simulators. I enjoy working close to the hardware and making complex systems more accessible.
+      <br>
     </p>
     <div class="hero-links">
-      <a href="#projects" class="btn btn-primary">
-        <svg viewBox="0 0 16 16" xmlns="http://www.w3.org/2000/svg"><path d="M8 1a7 7 0 100 14A7 7 0 008 1zm.75 4v2.25H11a.75.75 0 010 1.5H8.75V11a.75.75 0 01-1.5 0V8.75H5a.75.75 0 010-1.5h2.25V5a.75.75 0 011.5 0z"/></svg>
+      <a href="#projects" class="btn btn-primary" onclick="event.preventDefault();document.getElementById('projects').scrollIntoView({behavior:'smooth',block:'start'})">
+        <svg viewBox="0 0 16 16" xmlns="http://www.w3.org/2000/svg"><path d="M8 4a.75.75 0 01.75.75v5.69l2.22-2.22a.75.75 0 111.06 1.06l-3.5 3.5a.75.75 0 01-1.06 0l-3.5-3.5a.75.75 0 111.06-1.06l2.22 2.22V4.75A.75.75 0 018 4z"/></svg>
         View Projects
       </a>
       <a href="https://github.com/kaiwen-z" target="_blank" rel="noopener" class="btn btn-outline">
@@ -357,9 +538,168 @@
     </div>
   </section>
 
+  <section class="about-section">
+    <p class="about-heading">Skills & Technologies</p>
+    <h3 class="about-title">What I Work With</h3>
+    <div class="skills-grid">
+      <div class="skill-category">
+        <h4>Languages</h4>
+        <div class="skill-pills">
+          <span class="skill-pill highlight">Python</span>
+          <span class="skill-pill highlight">JavaScript</span>
+          <span class="skill-pill highlight">Java</span>
+          <span class="skill-pill highlight">C</span>
+          <span class="skill-pill">PowerShell</span>
+          <span class="skill-pill">SQL</span>
+          <span class="skill-pill">Verilog</span>
+        </div>
+      </div>
+      <div class="skill-category">
+        <h4>Frameworks & Libraries</h4>
+        <div class="skill-pills">
+          <span class="skill-pill">Tkinter</span>
+          <span class="skill-pill">matplotlib</span>
+          <span class="skill-pill">NumPy</span>
+          <span class="skill-pill">pandas</span>
+          <span class="skill-pill">jQuery</span>
+          <span class="skill-pill">Spring Web-Flow</span>
+          <span class="skill-pill">Bootstrap</span>
+        </div>
+      </div>
+      <div class="skill-category">
+        <h4>Tools & Platforms</h4>
+        <div class="skill-pills">
+          <span class="skill-pill">Git</span>
+          <span class="skill-pill">WinDbg</span>
+          <span class="skill-pill">Jira</span>
+          <span class="skill-pill">MongoDB</span>
+          <span class="skill-pill">SQL Server</span>
+          <span class="skill-pill">HTML5 Canvas</span>
+          <span class="skill-pill">Microsoft Azure</span>
+        </div>
+      </div>
+      <div class="skill-category">
+        <h4>Domains</h4>
+        <div class="skill-pills">
+          <span class="skill-pill">Kernel-Mode Debugging</span>
+          <span class="skill-pill">Cloud Virtualization</span>
+          <span class="skill-pill">Automotive Diagnostics (UDS/HSFZ)</span>
+          <span class="skill-pill">FPGA / Hardware Design</span>
+          <span class="skill-pill">Circuit Simulation</span>
+          <span class="skill-pill">Automated Testing</span>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <div class="section-divider"><hr></div>
+
+  <section class="about-section" style="padding-top: 60px;">
+    <p class="about-heading">Experience</p>
+    <h3 class="about-title">Where I've Worked</h3>
+    <div class="exp-list">
+      <div class="exp-item">
+        <div class="exp-date">May 2022 – May 2023</div>
+        <div class="exp-content">
+          <h4>Cloud Virtualization Software Developer</h4>
+          <p class="exp-org">AMD</p>
+          <p class="exp-desc">
+            Debugged and triaged Windows kernel-mode driver issues for Microsoft Azure services. Built automated PowerShell and Python testing frameworks for regression testing, and resolved a critical deadlock issue in deployed driver software serving Microsoft, Google, and Amazon — reducing bug resolution time by 30%.
+          </p>
+          <div class="exp-techs">
+            <span class="exp-tech">C</span>
+            <span class="exp-tech">Python</span>
+            <span class="exp-tech">PowerShell</span>
+            <span class="exp-tech">WinDbg</span>
+            <span class="exp-tech">Azure</span>
+          </div>
+        </div>
+      </div>
+      <div class="exp-item">
+        <div class="exp-date">Jan 2020 – May 2022</div>
+        <div class="exp-content">
+          <h4>Teaching Assistant</h4>
+          <p class="exp-org">University of Toronto</p>
+          <p class="exp-desc">
+            Led tutorials and technical labs for Principles of Computer Hardware and Programming. Provided one-on-one instruction and generated curriculum for exams and tests.
+          </p>
+          <div class="exp-techs">
+            <span class="exp-tech">Computer Hardware</span>
+            <span class="exp-tech">Verilog</span>
+          </div>
+        </div>
+      </div>
+      <div class="exp-item">
+        <div class="exp-date">May 2019 – Dec 2019</div>
+        <div class="exp-content">
+          <h4>IT Architecture Analyst</h4>
+          <p class="exp-org">Ontario Ministry of Education</p>
+          <p class="exp-desc">
+            Redesigned the DocParser application in Java with MongoDB and Watson NLP, cutting processing time by 70%. Built the RepoManager app with Spring Web-Flow and SQL Server, earning commendation for innovative problem-solving from clients and the project lead.
+          </p>
+          <div class="exp-techs">
+            <span class="exp-tech">Java</span>
+            <span class="exp-tech">MongoDB</span>
+            <span class="exp-tech">Spring</span>
+            <span class="exp-tech">SQL Server</span>
+            <span class="exp-tech">JavaScript</span>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <div class="section-divider"><hr></div>
+
+  <section class="about-section" style="padding-top: 60px;">
+    <p class="about-heading">Education</p>
+    <h3 class="about-title">University of Toronto</h3>
+    <div class="exp-list">
+      <div class="exp-item" style="border-bottom: none;">
+        <div class="exp-date">Honours BSc</div>
+        <div class="exp-content">
+          <h4>Computer Science (Co-op)</h4>
+          <p class="exp-org">University of Toronto Entrance Scholarship</p>
+          <p class="exp-desc">
+            Coursework in engineering large software systems, internet and web systems, principles of computer hardware, and operating systems.
+          </p>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <div class="section-divider"><hr></div>
+
   <section class="section" id="projects">
     <p class="section-label">Portfolio</p>
     <h2 class="section-title">Projects</h2>
+
+    <div class="project-card">
+      <div class="project-thumb">
+        <img src="bmw-dashboard.gif" alt="BMW ENET live sensor dashboard with circular gauges showing RPM, oil pressure, boost, and temperatures" loading="lazy">
+      </div>
+      <div class="project-info">
+        <div class="project-tags">
+          <span class="tag">Python</span>
+          <span class="tag">Tkinter</span>
+          <span class="tag">UDS / HSFZ</span>
+          <span class="tag">Automotive</span>
+        </div>
+        <h3>BMW ENET Live Sensor Dashboard</h3>
+        <p>
+          A real-time diagnostic dashboard for BMW F-chassis vehicles over Ethernet (ENET). Reads 11 live sensors from the N55 DME via UDS protocol, featuring circular gauges, bar gauges, CSV data logging, log replay with timeline scrubbing, and a companion matplotlib log viewer with multiple visualization modes.
+        </p>
+        <div class="project-links">
+          <span class="project-link" style="opacity: 0.45; cursor: default;">
+            Desktop App — No Live Demo
+          </span>
+          <a href="" target="_blank" rel="noopener" class="project-link">
+            Source Code
+            <svg width="14" height="14" viewBox="0 0 16 16" fill="currentColor"><path d="M8 0C3.58 0 0 3.58 0 8c0 3.54 2.29 6.53 5.47 7.59.4.07.55-.17.55-.38 0-.19-.01-.82-.01-1.49-2.01.37-2.53-.49-2.69-.94-.09-.23-.48-.94-.82-1.13-.28-.15-.68-.52-.01-.53.63-.01 1.08.58 1.23.82.72 1.21 1.87.87 2.33.66.07-.52.28-.87.51-1.07-1.78-.2-3.64-.89-3.64-3.95 0-.87.31-1.59.82-2.15-.08-.2-.36-1.02.08-2.12 0 0 .67-.21 2.2.82.64-.18 1.32-.27 2-.27.68 0 1.36.09 2 .27 1.53-1.04 2.2-.82 2.2-.82.44 1.1.16 1.92.08 2.12.51.56.82 1.27.82 2.15 0 3.07-1.87 3.75-3.65 3.95.29.25.54.73.54 1.48 0 1.07-.01 1.93-.01 2.2 0 .21.15.46.55.38A8.013 8.013 0 0016 8c0-4.42-3.58-8-8-8z"/></svg>
+          </a>
+        </div>
+      </div>
+    </div>
 
     <div class="project-card">
       <div class="project-thumb">
@@ -380,7 +720,7 @@
             Live Demo
             <svg width="14" height="14" viewBox="0 0 16 16" fill="currentColor"><path d="M4.5 2A.5.5 0 015 2.5V3h5.586l-6.293 6.293a.5.5 0 00.708.708L11.293 3.707V9.5a.5.5 0 001 0v-7a.5.5 0 00-.5-.5h-7z"/></svg>
           </a>
-          <a href="https://github.com/kaiwen-z/kaiwen-z.github.io" target="_blank" rel="noopener" class="project-link">
+          <a href="https://github.com/kaiwen-z/simplecircuitsim" target="_blank" rel="noopener" class="project-link">
             Source Code
             <svg width="14" height="14" viewBox="0 0 16 16" fill="currentColor"><path d="M8 0C3.58 0 0 3.58 0 8c0 3.54 2.29 6.53 5.47 7.59.4.07.55-.17.55-.38 0-.19-.01-.82-.01-1.49-2.01.37-2.53-.49-2.69-.94-.09-.23-.48-.94-.82-1.13-.28-.15-.68-.52-.01-.53.63-.01 1.08.58 1.23.82.72 1.21 1.87.87 2.33.66.07-.52.28-.87.51-1.07-1.78-.2-3.64-.89-3.64-3.95 0-.87.31-1.59.82-2.15-.08-.2-.36-1.02.08-2.12 0 0 .67-.21 2.2.82.64-.18 1.32-.27 2-.27.68 0 1.36.09 2 .27 1.53-1.04 2.2-.82 2.2-.82.44 1.1.16 1.92.08 2.12.51.56.82 1.27.82 2.15 0 3.07-1.87 3.75-3.65 3.95.29.25.54.73.54 1.48 0 1.07-.01 1.93-.01 2.2 0 .21.15.46.55.38A8.013 8.013 0 0016 8c0-4.42-3.58-8-8-8z"/></svg>
           </a>

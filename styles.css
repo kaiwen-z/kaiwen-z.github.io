@@ -2225,7 +2225,7 @@
 
 /* --- BLOG PROSE --- */
 .blog-prose {
-  color: var(--text-muted);
+  color: var(--text);
   line-height: 1.8;
   font-size: 0.95rem;
 }
@@ -2246,6 +2246,10 @@
 
 .blog-prose a:hover {
   color: var(--accent-hover);
+}
+
+.blog-page .hero-desc {
+  color: var(--text);
 }
 
 /* --- IMAGE PLACEHOLDER --- */

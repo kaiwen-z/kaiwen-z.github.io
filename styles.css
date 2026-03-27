@@ -34,6 +34,16 @@
     a { color: var(--accent); text-decoration: none; transition: color 0.2s; }
     a:hover { color: var(--accent-hover); }
 
+    /* Portfolio homepage: brighter body / secondary text than global defaults */
+    .portfolio-page {
+      --text: #ececef;
+      --text-muted: #b4b4bf;
+    }
+
+    .portfolio-page .alias {
+      color: #a2a2ad;
+    }
+
     /* --- NAV --- */
     nav {
       position: sticky;

@@ -1,0 +1,1575 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Kevin Zhu — DIY BMW N55 Engine Rebuild</title>
+  <link rel="stylesheet" href="styles.css">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+</head>
+
+<!-- ZOOM LIGHTBOX -->
+<div class="zoom-lightbox" id="zoomLightbox">
+  <button class="zoom-close-btn" id="zoomCloseBtn">
+    <svg viewBox="0 0 24 24"><path d="M19 6.41L17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z"/></svg>
+  </button>
+  <div class="zoom-image-wrap" id="zoomWrap">
+    <img id="zoomImg" src="" alt="Zoom view" draggable="false">
+  </div>
+  <div class="zoom-controls">
+    <button class="zoom-ctrl-btn" id="zoomIn">+</button>
+    <button class="zoom-ctrl-btn" id="zoomOut">-</button>
+    <button class="zoom-ctrl-btn" id="zoomReset" style="font-size: 0.75rem;">1:1</button>
+  </div>
+</div>
+
+<!-- SLIDESHOW LIGHTBOX (gallery thumbs) -->
+<div class="slideshow-lightbox" id="slideshowLightbox" role="dialog" aria-modal="true" aria-label="Image slideshow">
+  <button type="button" class="slideshow-lightbox__close" id="slideshowCloseBtn" aria-label="Close slideshow">
+    <svg viewBox="0 0 24 24"><path d="M19 6.41L17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z"/></svg>
+  </button>
+  <button type="button" class="slideshow-lightbox__nav slideshow-lightbox__prev" id="slideshowPrevBtn" aria-label="Previous image">
+    <svg viewBox="0 0 24 24"><path d="M15.41 7.41L14 6l-6 6 6 6 1.41-1.41L10.83 12z"/></svg>
+  </button>
+  <button type="button" class="slideshow-lightbox__nav slideshow-lightbox__next" id="slideshowNextBtn" aria-label="Next image">
+    <svg viewBox="0 0 24 24"><path d="M10 6L8.59 7.41 13.17 12l-4.58 4.59L10 18l6-6z"/></svg>
+  </button>
+  <div class="slideshow-lightbox__stage">
+    <img id="slideshowImg" src="" alt="" draggable="false">
+  </div>
+  <p class="slideshow-lightbox__caption" id="slideshowCaption"></p>
+</div>
+
+<script>
+(function() {
+  const lightbox = document.getElementById('zoomLightbox');
+  const wrap = document.getElementById('zoomWrap');
+  const img = document.getElementById('zoomImg');
+  let scale = 1, panX = 0, panY = 0;
+  let dragging = false, startX, startY;
+
+  window.openZoom = function(src) {
+    img.src = src;
+    scale = 1; panX = 0; panY = 0;
+    applyTransform();
+    lightbox.classList.add('active');
+    document.body.style.overflow = 'hidden';
+  };
+
+  function close() {
+    lightbox.classList.remove('active');
+    document.body.style.overflow = '';
+  }
+
+  function applyTransform() {
+    wrap.style.transform = 'translate(' + panX + 'px, ' + panY + 'px)';
+    img.style.transform = 'scale(' + scale + ')';
+  }
+
+  document.getElementById('zoomCloseBtn').addEventListener('click', close);
+  lightbox.addEventListener('click', (e) => { if (e.target === lightbox) close(); });
+  document.getElementById('zoomIn').addEventListener('click', () => { scale = Math.min(scale * 1.3, 5); applyTransform(); });
+  document.getElementById('zoomOut').addEventListener('click', () => { scale = Math.max(scale / 1.3, 0.5); applyTransform(); });
+  document.getElementById('zoomReset').addEventListener('click', () => { scale = 1; panX = 0; panY = 0; applyTransform(); });
+
+  lightbox.addEventListener('wheel', (e) => {
+    e.preventDefault();
+    scale = e.deltaY < 0 ? Math.min(scale * 1.15, 5) : Math.max(scale / 1.15, 0.5);
+    applyTransform();
+  }, { passive: false });
+
+  wrap.addEventListener('mousedown', (e) => {
+    if (scale <= 1) return;
+    dragging = true;
+    startX = e.clientX - panX;
+    startY = e.clientY - panY;
+    lightbox.classList.add('dragging');
+  });
+
+  window.addEventListener('mousemove', (e) => {
+    if (!dragging) return;
+    panX = e.clientX - startX;
+    panY = e.clientY - startY;
+    applyTransform();
+  });
+
+  window.addEventListener('mouseup', () => { dragging = false; lightbox.classList.remove('dragging'); });
+
+  document.addEventListener('keydown', (e) => {
+    if (!lightbox.classList.contains('active')) return;
+    if (e.key === 'Escape') close();
+  });
+
+  document.addEventListener('click', (e) => {
+    const phImg = e.target.closest('.image-placeholder img');
+    if (!phImg || !phImg.getAttribute('src')) return;
+    e.preventDefault();
+    window.openZoom(phImg.currentSrc || phImg.src);
+  });
+})();
+</script>
+
+<body>
+  <!-- NAV -->
+  <nav>
+    <div class="nav-inner">
+      <a href="index.html" class="nav-logo">Kevin Zhu</a>
+      <div class="nav-links">
+        <a href="index.html#about">About</a>
+        <a href="index.html#projects">Projects</a>
+        <a href="https://github.com/kaiwen-z" target="_blank">GitHub</a>
+      </div>
+    </div>
+  </nav>
+
+  <!-- HERO -->
+  <section class="hero">
+    <p class="hero-greeting">Saving my car; a project documentation</p>
+    <h1>Complete DIY Engine Rebuild of The BMW <span class="accent">N55B30</span></h1>
+    <p class="hero-desc">
+      A story of resiliance, self-reliance, and engineering. The complete bottom-end rebuild, turbocharger core replacement, and RWD conversion on a 2012 BMW 535xi F10 
+      after catastrophic turbo FOD contamination. Performed entirely in a home garage with zero prior mechanical experience.
+    </p>
+    <div class="hero-links">
+      <a href="index.html" class="btn btn-outline">
+        <svg viewBox="0 0 24 24"><path d="M20 11H7.83l5.59-5.59L12 4l-8 8 8 8 1.41-1.41L7.83 13H20v-2z"/></svg>
+        Back to Portfolio
+      </a>
+    </div>
+  </section>
+
+  <!-- TAGS -->
+  <section class="section section-compact">
+    <div class="project-tags">
+      <span class="tag">Automotive Engineering</span>
+      <span class="tag">Engine Rebuild</span>
+      <span class="tag">DIY Repair</span>
+      <span class="tag">BMW N55B30M0</span>
+      <span class="tag">2025</span>
+    </div>
+  </section>
+
+  <!-- TABLE OF CONTENTS -->
+  <section class="section section-compact" id="toc">
+    <div class="toc-card">
+      <h3>Table of Contents</h3>
+      <ol class="toc-list">
+        <li><a href="#introduction">Introduction</a></li>
+        <li><a href="#diagnosis">The Problem &amp; Diagnosis</a></li>
+        <li><a href="#the-decision">The Decision: Rebuild or Scrap?</a></li>
+        <li><a href="#preparation">Preparation &amp; Learning</a></li>
+        <li><a href="#teardown">Engine Teardown &amp; Assessment</a></li>
+        <li><a href="#bottom-end">Bottom-End Rebuild</a></li>
+        <li><a href="#turbo-rebuild">Turbo Rebuild</a></li>
+        <li><a href="#reassembly">Reassembly &amp; RWD Conversion</a></li>
+        <li><a href="#first-start">First Start &amp; Testing</a></li>
+        <li><a href="#update-20k">20,000km Later Update</a></li>
+        <li><a href="#costs">Lessons Learned &amp; Total Costs</a></li>
+        <li><a href="#conclusion">Conclusion</a></li>
+      </ol>
+    </div>
+  </section>
+
+  <div class="section-divider"><hr></div>
+
+  <!-- ============================================================
+       SECTION 1: INTRODUCTION
+       ============================================================ -->
+  <section class="section" id="introduction">
+    <p class="section-label">Chapter 1</p>
+    <h2 class="section-title">Introduction</h2>
+    <div class="blog-prose">
+      <p>I initially purchased this 2012 BMW 535xi from Don Valley Lexus in the spring of 2023. It saw its first winter with me the following year. To be honest, it was a bad choice of vehicle to buy, as nearly all older German luxury cars are money pits. Over that first year, it developed a couple of glaring problems that, quite frankly, the dealership had lied to me about. The front passenger door lock wasn't working, and the car had a bad alignment due to broken suspension springs likely from age and wear. The interior door pull handles had that classic BMW melting plastic issue, though the leather itself was still in excellent condition.</p>
+      <p>I immediately got to work fixing the little things to improve the experience. However, soon after that first winter, I noticed the car would experience choppy acceleration under moderate throttle. This sent me down a rabbit hole of mechanical diagnostics, checking everything from airflow control to the transmission. Eventually, I figured out that the transfer case system in these xDrive vehicles is designed with a wet clutch that constantly performs micro-slips during normal operation. Usually, this is smooth, but in an older vehicle, it can start to stutter. I realized I would likely need a new transfer case, or I could convert the car to RWD.</p>
+      <p>Coming from Japanese cars known for reliability, I already knew that a German car requires proactive and constant maintenance. It was my job to rise to the challenge or forfeit the car, so I was constantly looking for things to fix. The following summer of 2024, the car had a few more issues. The air conditioning stopped working one day; I pulled the AC coils to check for continuity and immediately noticed they were shorted. I replaced them the following week. But that wasn't the end of it!</p>
+    </div>
+
+    <!-- Example: collage / multi-image grid (copy this block and adjust grid cells as needed) -->
+    <div class="image-collage">
+      <div class="image-collage__item">
+        <img src="car-repair-blog-images\ch1\1.jpg" alt="">
+        <span>Image slot 1</span>
+      </div>
+      <div class="image-collage__item">
+        <img src="car-repair-blog-images\ch1\2.jpg" alt="">
+        <span>Image slot 2</span>
+      </div>
+    </div>
+
+    <!-- Example: before / after (set src on both images; drag horizontally on the image) -->
+    <!-- <div class="image-compare">
+      <div class="image-compare__track" role="slider" tabindex="0" aria-label="Compare before and after. Drag left or right." aria-valuemin="0" aria-valuemax="100" aria-valuenow="50">
+        <div class="image-compare__layer image-compare__layer--before">
+          <img src="" alt="Before">
+          <span class="image-compare__slot-label">Before</span>
+        </div>
+        <div class="image-compare__layer image-compare__layer--after">
+          <img src="" alt="After">
+          <span class="image-compare__slot-label">After</span>
+        </div>
+        <div class="image-compare__divider" aria-hidden="true"></div>
+      </div>
+    </div> -->
+
+    <!-- Example: gallery → click any thumb with an image to open slideshow (one .image-gallery per group) -->
+    <!-- <div class="image-gallery" data-gallery="intro-demo">
+      <button type="button" class="image-gallery__thumb" aria-label="Open gallery image 1">
+        <img src="car-repair-blog-images\ch1\4.jpg" alt="">
+        <span class="image-gallery__caption">Gallery slot 1</span>
+      </button>
+      <button type="button" class="image-gallery__thumb" aria-label="Open gallery image 2">
+        <img src="car-repair-blog-images\ch1\4.jpg" alt="">
+        <span class="image-gallery__caption">Gallery slot 2</span>
+      </button>
+      <button type="button" class="image-gallery__thumb" aria-label="Open gallery image 3">
+        <img src="car-repair-blog-images\ch1\4.jpg" alt="">
+        <span class="image-gallery__caption">Gallery slot 3</span>
+      </button>
+    </div> -->
+  </section>
+
+  <div class="section-divider"><hr></div>
+
+  <!-- ============================================================
+       SECTION 2: THE PROBLEM & DIAGNOSIS
+       ============================================================ -->
+  <section class="section" id="diagnosis">
+    <p class="section-label">Chapter 2</p>
+    <h2 class="section-title">The Problem &amp; Diagnosis</h2>
+    <div class="blog-prose">
+      <p>The final issue I kept running into was a low boost pressure plausibility error under high engine load, triggered by a check engine light and "Powertrain Malfunction" warning on the dash. At first, there were no other symptoms, just the warning. The car still accelerated fine without hesitation. Still being inexperienced, I began to suspect different parts of the engine's airflow control system. I checked for leaks but couldn't find any. I checked the turbo diverter valve, which I suspected might be faulty since they contain a rubber diaphragm that can easily crack from age and heat cycles, but it was fine. Yet the issue persisted. I had also noticed a newly occurring whining noise that corresponded with engine RPM, along with a constant low boost plausibility error code that kept flashing whenever moderate or high throttle was applied.</p>
+
+      <p>One summer night, I was driving back home from work when I noticed a bunch of warning lights suddenly start flashing TPMS, traction control, and ABS. The engine was low on power and wouldn't accelerate much. I suspected it wasn't possible for all of these errors to occur at the same time, or rather, it was extremely unlikely. I investigated and diagnosed the issue as voltage creep from a failing alternator, which at the time had started outputting 15V+ to the battery.</p>
+
+      <p>After replacing the alternator, the voltage issues disappeared. But during the alternator replacement, I ran into a complication: since the alternator sits on a bracket below the engine intake manifold, it requires removal of the manifold to access all the bolts and connectors. When I removed the manifold, I noticed something extremely concerning. There was shiny sand or metal dust speckled throughout the intake manifold.</p>
+
+      <div class="image-gallery" data-gallery="intro-demo">
+        <button type="button" class="image-gallery__thumb" aria-label="Open gallery image 1">
+          <img src="car-repair-blog-images\ch2\1.jpg" alt="">
+          <span class="image-gallery__caption">Components in-front of engine</span>
+        </button>
+        <button type="button" class="image-gallery__thumb" aria-label="Open gallery image 2">
+          <img src="car-repair-blog-images\ch2\2.jpg" alt="">
+          <span class="image-gallery__caption">Engine intake side</span>
+        </button>
+        <button type="button" class="image-gallery__thumb" aria-label="Open gallery image 3">
+          <img src="car-repair-blog-images\ch2\3.jpg" alt="">
+          <span class="image-gallery__caption">Gunk with metal debris</span>
+        </button>
+        <button type="button" class="image-gallery__thumb" aria-label="Open gallery image 3">
+          <img src="car-repair-blog-images\ch2\4.jpg" alt="">
+          <span class="image-gallery__caption">Intake manifold runner</span>
+        </button>
+        <button type="button" class="image-gallery__thumb" aria-label="Open gallery image 3">
+          <img src="car-repair-blog-images\ch2\5.jpg" alt="">
+          <span class="image-gallery__caption">Intake manifold from throttle</span>
+        </button>
+        <button type="button" class="image-gallery__thumb" aria-label="Open gallery image 3">
+          <img src="car-repair-blog-images\ch2\6.jpg" alt="">
+          <span class="image-gallery__caption">Intercooler cold side</span>
+        </button>
+      </div>
+
+      <p>I knew this couldn't be good, so I traced the airflow back to the charge pipe. It was full of metal debris too. I looked at the intake and filters, both were clean. So the source had to be somewhere between those two points. Eventually, I decided to scope the turbocharger with an endoscope that my dad happened to have. That's when I saw it: the compressor turbine was completely destroyed.</p>
+
+      <div class="image-placeholder">
+        <img src="car-repair-blog-images\ch2\7.jpg" alt="Destroyed turbocharger compressor">
+        <span>Image: Destroyed turbocharger compressor</span>
+      </div>
+
+      <p>Terrible thoughts raced through my head. If the turbine was shredding metal bits this whole time, where were they ending up? Inside the engine? In the cylinders? I checked the intake valves and did see a few specks of metal, but nothing significant. Later, I drained the oil and faced my worst nightmare: the oil was heavily contaminated with metallic chips, and the oil filter was filled with glitter. My car was about to have a catastrophic failure.</p>
+
+      <div class="callout-card danger">
+        <div class="callout-icon">&#x1F6D1;</div>
+        <div class="callout-body">
+          <h4>Catastrophic Discovery</h4>
+          <p>The oil was heavily contaminated with metallic chips, and the oil filter was filled with glitter. The turbo had been sending metal debris into the engine.</p>
+        </div>
+      </div>
+
+      <div class="image-gallery" data-gallery="intro-demo">
+        <button type="button" class="image-gallery__thumb" aria-label="Open gallery image 1">
+          <img src="car-repair-blog-images\ch2\8.jpg" alt="">
+          <span class="image-gallery__caption">Engine oil filter</span>
+        </button>
+        <button type="button" class="image-gallery__thumb" aria-label="Open gallery image 2">
+          <img src="car-repair-blog-images\ch2\9.jpg" alt="">
+          <span class="image-gallery__caption">Engine oil</span>
+        </button>
+        <button type="button" class="image-gallery__thumb" aria-label="Open gallery image 3">
+          <img src="car-repair-blog-images\ch2\10.jpg" alt="">
+          <span class="image-gallery__caption">Also oil</span>
+        </button>
+      </div>
+    </div>
+  </section>
+
+  <div class="section-divider"><hr></div>
+
+  <!-- ============================================================
+       SECTION 3: THE DECISION — REBUILD OR SCRAP?
+       ============================================================ -->
+  <section class="section" id="the-decision">
+    <p class="section-label">Chapter 3</p>
+    <h2 class="section-title">The Decision: Rebuild or Scrap?</h2>
+    <div class="blog-prose">
+      <p>Initially I was crushed. I thought this car would be completely totaled. Generally a turbo FOD is not recoverable without an engine replacement or significant rebuild. I looked around for mechanic quotes and was told somewhere in the range of $10,000 for diagnostics, repairs, and labour. I tried the dealership and was offered a bill of nearly $30,000! I even considered selling the car to a junkyard or used parts dealer. I had offers for around $2,000 for my car, which I had spent nearly 10 times that amount to purchase in the first place. I was furious and hopeless. It was a terrible feeling.</p>
+    </div>
+
+    <div class="stat-row" style="margin: 32px 0;">
+      <div class="stat-card">
+        <div class="stat-icon">
+          <svg viewBox="0 0 24 24"><path d="M22.7 19l-9.1-9.1c.9-2.3.4-5-1.5-6.9-2-2-5-2.4-7.4-1.3L9 6 6 9 1.6 4.7C.4 7.1.9 10.1 2.9 12.1c1.9 1.9 4.6 2.4 6.9 1.5l9.1 9.1c.4.4 1 .4 1.4 0l2.3-2.3c.5-.4.5-1.1.1-1.4z"/></svg>
+        </div>
+        <div class="stat-number">~$10K</div>
+        <div class="stat-label">Mechanic Quote</div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-icon">
+          <svg viewBox="0 0 24 24"><path d="M18.92 6.01C18.72 5.42 18.16 5 17.5 5h-11c-.66 0-1.21.42-1.42 1.01L3 12v8c0 .55.45 1 1 1h1c.55 0 1-.45 1-1v-1h12v1c0 .55.45 1 1 1h1c.55 0 1-.45 1-1v-8l-2.08-5.99zM6.5 16c-.83 0-1.5-.67-1.5-1.5S5.67 13 6.5 13s1.5.67 1.5 1.5S7.33 16 6.5 16zm11 0c-.83 0-1.5-.67-1.5-1.5s.67-1.5 1.5-1.5 1.5.67 1.5 1.5-.67 1.5-1.5 1.5zM5 11l1.5-4.5h11L19 11H5z"/></svg>
+        </div>
+        <div class="stat-number">~$30K</div>
+        <div class="stat-label">Dealer Quote</div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-icon">
+          <svg viewBox="0 0 24 24"><path d="M11.8 10.9c-2.27-.59-3-1.2-3-2.15 0-1.09 1.01-1.85 2.7-1.85 1.78 0 2.44.85 2.5 2.1h2.21c-.07-1.72-1.12-3.3-3.21-3.81V3h-3v2.16c-1.94.42-3.5 1.68-3.5 3.61 0 2.31 1.91 3.46 4.7 4.13 2.5.6 3 1.48 3 2.41 0 .69-.49 1.79-2.7 1.79-2.06 0-2.87-.92-2.98-2.1h-2.2c.12 2.19 1.76 3.42 3.68 3.83V21h3v-2.15c1.95-.37 3.5-1.5 3.5-3.55 0-2.84-2.43-3.81-4.7-4.4z"/></svg>
+        </div>
+        <div class="stat-number">~$2K</div>
+        <div class="stat-label">Junkyard Offer</div>
+      </div>
+    </div>
+
+    <div class="callout-card" style="margin-bottom: 24px;">
+      <div class="callout-icon">&#x1F4A1;</div>
+      <div class="callout-body">
+        <h4>A Turning Point</h4>
+        <p>The funny thing about desperation is that it's a choice. You can let it overwhelm you or you can rise up and overcome it.</p>
+      </div>
+    </div>
+
+    <div class="blog-prose">
+      <p>I thought for weeks that my situation was completely hopeless. But in that time of despair, I couldn't shake the rising feeling of determination. I realized there is really no one else I can rely on but myself, and I would have to turn to myself for the solution to my problems. In that mindset, I became determined to solve this problem by myself. I thought, if a mechanic can do it, then so can I. We live in such a modern age with convenience at every step, and we often rely on other people to do things for us. This leads to learned helplessness, a feeling that I need a professional or expert, or that I can't do it myself. But the reality is, professionals and experts were once clueless people just like you and me! The only thing that separates them from me is knowledge and experience. And with the help of the internet, I can make up for those deficits in no time!</p>
+    </div>
+  </section>
+
+  <div class="section-divider"><hr></div>
+
+  <!-- ============================================================
+       SECTION 4: PREPARATION & LEARNING
+       ============================================================ -->
+  <section class="section" id="preparation">
+    <p class="section-label">Chapter 4</p>
+    <h2 class="section-title">Preparation &amp; Learning</h2>
+    <div class="blog-prose">
+      <p>So I began by storing my car in my parents' garage for the winter. I decided it would be too cold to work during our brutal Canadian winters. Of course there was an enormous amount of random items piled in the garage. We had been using it as a temporary (okay, permanent) storage locker for years, so my first course of action was to make room for the car. I started by building a shelf! I purchased around $60 of lumber and some fasteners, then built a storage solution for the garage. I cleaned up all of the random items lying around.</p>
+    </div>
+
+     <div class="image-gallery" data-gallery="intro-demo">
+        <button type="button" class="image-gallery__thumb" aria-label="Open gallery image 1">
+          <img src="car-repair-blog-images\ch4\1.jpg" alt="">
+          <span class="image-gallery__caption">Cutting lumber</span>
+        </button>
+        <button type="button" class="image-gallery__thumb" aria-label="Open gallery image 2">
+          <img src="car-repair-blog-images\ch4\2.jpg" alt="">
+          <span class="image-gallery__caption">Shelving levels</span>
+        </button>
+        <button type="button" class="image-gallery__thumb" aria-label="Open gallery image 3">
+          <img src="car-repair-blog-images\ch4\3.jpg" alt="">
+          <span class="image-gallery__caption">My workshop!</span>
+        </button>
+      </div>
+
+    <div class="blog-prose">
+      <p>During the winter, I removed the car battery and began to study the machine I was about to take apart.</p>
+      <p>I started by reading the full technical guide to the N55B30M0 engine:</p>
+    </div>
+
+    <div class="link-shelf" style="margin: 20px 0 28px;">
+      <a href="https://www.bimmerpost.com/goodiesforyou/N55-Product-Information.pdf" target="_blank" rel="noopener" class="link-preview">
+        <div class="link-preview-icon" style="font-size: 1.1rem;">&#x1F4D8;</div>
+        <div class="link-preview-text">
+          <div class="link-preview-site">
+            <span class="link-preview-tag">Docs</span>
+            bimmerpost.com
+          </div>
+          <div class="link-preview-title">N55 Product Information (PDF)</div>
+          <div class="link-preview-desc">Full BMW technical guide to the N55B30M0 engine — product information document.</div>
+        </div>
+        <div class="link-preview-arrow">
+          <svg viewBox="0 0 24 24"><path d="M10 6L8.59 7.41 13.17 12l-4.58 4.59L10 18l6-6z"/></svg>
+        </div>
+      </a>
+      <a href="https://ia600902.us.archive.org/26/items/BMWTechnicalTrainingDocuments/ST916%20N55%20Engine/N55_Engine_web.pdf" target="_blank" rel="noopener" class="link-preview">
+        <div class="link-preview-icon" style="font-size: 1.1rem;">&#x1F4D8;</div>
+        <div class="link-preview-text">
+          <div class="link-preview-site">
+            <span class="link-preview-tag">Docs</span>
+            archive.org
+          </div>
+          <div class="link-preview-title">BMW Technical Training — ST916 N55 Engine (PDF)</div>
+          <div class="link-preview-desc">BMW official technical training document for the N55 engine platform.</div>
+        </div>
+        <div class="link-preview-arrow">
+          <svg viewBox="0 0 24 24"><path d="M10 6L8.59 7.41 13.17 12l-4.58 4.59L10 18l6-6z"/></svg>
+        </div>
+      </a>
+      <a href="https://www.fcpeuro.com/blog/the-definitive-guide-to-the-bmw-n55-engine-common-faults-tech-specs-upgrades" target="_blank" rel="noopener" class="link-preview">
+        <div class="link-preview-icon" style="font-size: 1.3rem;">&#x1F6D2;</div>
+        <div class="link-preview-text">
+          <div class="link-preview-site">
+            <span class="link-preview-tag">Guide</span>
+            fcpeuro.com
+          </div>
+          <div class="link-preview-title">The Definitive Guide to the BMW N55 Engine</div>
+          <div class="link-preview-desc">Common faults, tech specs, and upgrades for the BMW N55 engine platform.</div>
+        </div>
+        <div class="link-preview-arrow">
+          <svg viewBox="0 0 24 24"><path d="M10 6L8.59 7.41 13.17 12l-4.58 4.59L10 18l6-6z"/></svg>
+        </div>
+      </a>
+    </div>
+
+    <div class="blog-prose">
+      <p>I studied automotive engineering online in my free time while working through the most difficult courses of my degree. I had been studying computer science at the University of Toronto for a few years and was approaching my fourth year, so I was juggling heavy courses like CSC11 machine learning, CSC63 computational theory, and other math-heavy subjects. Because of that, the slog through all the automotive materials was slow. It took me the entire winter to finalize my plan for the next steps...</p>
+      <p>A really useful site for any BMW is RealOEM. With full dealer-level diagrams, labels, and part numbers, check it out:</p>
+    </div>
+
+    <div class="link-shelf" style="margin: 20px 0 28px;">
+      <a href="https://www.realoem.com/bmw/enUS/partgrp?id=FU73-USA-09-2011-F10-BMW-535iX&mg=11#50" target="_blank" rel="noopener" class="link-preview">
+        <div class="link-preview-icon" style="font-size: 1.1rem;">&#x1F4CB;</div>
+        <div class="link-preview-text">
+          <div class="link-preview-site">
+            <span class="link-preview-tag">Parts</span>
+            realoem.com
+          </div>
+          <div class="link-preview-title">RealOEM — BMW F10 535iX Parts Diagrams</div>
+          <div class="link-preview-desc">Dealer-level exploded diagrams, labels, and part numbers for the 2012 BMW 535xi.</div>
+        </div>
+        <div class="link-preview-arrow">
+          <svg viewBox="0 0 24 24"><path d="M10 6L8.59 7.41 13.17 12l-4.58 4.59L10 18l6-6z"/></svg>
+        </div>
+      </a>
+    </div>
+
+    <div class="blog-prose">
+      <p>RealOEM was a huge help in figuring out what I needed to do.</p>
+      <p>I broke my repair plan down into a few parts:</p>
+      <p>Tool and part acquisition - I bought the required tools as I worked on taking the car apart. I took this approach because I wanted to minimize cost. If I found damage that I figured would be catastrophically bad and unrepairable, I would stop and not purchase anything else. It was only after I had completely disassembled the car that I decided to move forward with the repair.</p>
+    </div>
+
+    <!-- Tools purchased (expandable) -->
+    <div class="accordion-card" style="margin: 20px 0 28px;">
+      <details>
+        <summary>Tools Purchased for This Project ($457.76 CAD)</summary>
+        <div class="accordion-body">
+          <div class="skill-pills" style="flex-direction: column; align-items: flex-start; gap: 6px;">
+            <span class="skill-pill" style="border-radius: 10px; padding: 10px 16px; text-align: left; width: 100%;">$9.99 — cSeao 14mm Flex-Head Ratcheting Combination Wrench</span>
+            <span class="skill-pill" style="border-radius: 10px; padding: 10px 16px; text-align: left; width: 100%;">$13.47 — Titan 15614 14mm 1/2-Inch Drive Hex Bit Socket</span>
+            <span class="skill-pill" style="border-radius: 10px; padding: 10px 16px; text-align: left; width: 100%;">$16.45 — Titan 15617 17mm 1/2-Inch Drive Hex Bit Socket</span>
+            <span class="skill-pill" style="border-radius: 10px; padding: 10px 16px; text-align: left; width: 100%;">$21.99 — VASTOOLS Torque Angle Meter, 1/2" Drive</span>
+            <span class="skill-pill" style="border-radius: 10px; padding: 10px 16px; text-align: left; width: 100%;">$39.95 — Redline Oil MT-LV GL-4 Gear Oil (1 qt)</span>
+            <span class="skill-pill" style="border-radius: 10px; padding: 10px 16px; text-align: left; width: 100%;">$95.99 — OKSTENCK CV Axle Slide Hammer Removal Tool Kit</span>
+            <span class="skill-pill" style="border-radius: 10px; padding: 10px 16px; text-align: left; width: 100%;">$14.99 — FOSHIO Plastic Razor Blade Scraper (gasket removal)</span>
+            <span class="skill-pill" style="border-radius: 10px; padding: 10px 16px; text-align: left; width: 100%;">$14.66 — Silicone Rubber Tapered Plugs (60pcs, for blocking lines)</span>
+            <span class="skill-pill" style="border-radius: 10px; padding: 10px 16px; text-align: left; width: 100%;">$17.01 — Permatex 81950 Engine Assembly Lubricant</span>
+            <span class="skill-pill" style="border-radius: 10px; padding: 10px 16px; text-align: left; width: 100%;">$21.02 — Powerbuilt 648441 Plastigauge</span>
+            <span class="skill-pill" style="border-radius: 10px; padding: 10px 16px; text-align: left; width: 100%;">$31.85 — Engine Hook Bracket / Tow Hook for BMW</span>
+            <span class="skill-pill" style="border-radius: 10px; padding: 10px 16px; text-align: left; width: 100%;">$21.99 — HXXF Jack Stand Pads Adapter (4 Ton, slotted frame)</span>
+            <span class="skill-pill" style="border-radius: 10px; padding: 10px 16px; text-align: left; width: 100%;">$19.25 — NEIKO 36mm Deep Impact Socket (axle nut)</span>
+            <span class="skill-pill" style="border-radius: 10px; padding: 10px 16px; text-align: left; width: 100%;">$16.99 — CMTOOL 14mm Thin Wall Magnetic Spark Plug Socket</span>
+            <span class="skill-pill" style="border-radius: 10px; padding: 10px 16px; text-align: left; width: 100%;">$12.17 — ARANA Hood Prop Struts Clamp (2 Pack)</span>
+            <span class="skill-pill" style="border-radius: 10px; padding: 10px 16px; text-align: left; width: 100%;">$89.99 — VEVOR Engine Support Bar (1100 lbs capacity)</span>
+          </div>
+        </div>
+      </details>
+      <details>
+        <summary>Tools Already Owned</summary>
+        <div class="accordion-body">
+          <div class="skill-pills" style="flex-wrap: wrap;">
+            <span class="skill-pill">3/8 Flex Head Slim Ratchet + Extensions</span>
+            <span class="skill-pill">Torque Wrench 1/4, 3/8 (Mastercraft)</span>
+            <span class="skill-pill">Torque Wrench 1/2 (Husky)</span>
+            <span class="skill-pill">Mastercraft Pick Set</span>
+            <span class="skill-pill">Hex Socket Set, Swivel Hex, E-Torx, Torx Bits</span>
+            <span class="skill-pill">Mastercraft Allen Key Set</span>
+            <span class="skill-pill">Mastercraft Assorted Wrench Set</span>
+            <span class="skill-pill">Mastercraft 1/2in Breaker Bar</span>
+            <span class="skill-pill">Extension Cord + Work Light</span>
+            <span class="skill-pill">Cardboard Sheets</span>
+            <span class="skill-pill">Ziploc Bags</span>
+            <span class="skill-pill">1/2in Impact Driver (RIGID)</span>
+            <span class="skill-pill">Voltmeter</span>
+            <span class="skill-pill">Endoscope</span>
+          </div>
+        </div>
+      </details>
+    </div>
+
+    <div class="blog-prose">
+      <p>I also needed a way to organize all the fasteners and small parts removed from the car, so organization became another priority. For this, I used plastic Ziploc bags and a Sharpie marker to label what each fastener was for and which part it belonged to. I ended up with over 100 bags of fasteners, even after grouping multiple fasteners per bag!</p>
+    </div>
+
+    <div class="image-placeholder" style="margin: 20px 0 28px;">
+      <img src="car-repair-blog-images\ch4\4.jpg" alt="Fasteners organized in labeled bags">
+      <span>Image: Fasteners organized in labeled Ziploc bags</span>
+    </div>
+
+    <div class="blog-prose">
+      <p>My plan was to take apart the engine first to inspect the oil pan and connecting rod bearings, which have the smallest clearance in the engine, to check for damage. That would let me assess whether the engine was worth saving. Then I could decide whether to repair or replace parts, or explore whatever other options I could think of.</p>
+    </div>
+  </section>
+
+  <div class="section-divider"><hr></div>
+
+  <!-- ============================================================
+       SECTION 5: ENGINE TEARDOWN & ASSESSMENT
+       ============================================================ -->
+  <section class="section" id="teardown">
+    <p class="section-label">Chapter 5</p>
+    <h2 class="section-title">Engine Teardown &amp; Assessment</h2>
+    <p style="color: var(--text-muted); line-height: 1.7; margin-bottom: 24px;">
+      This section covers the step-by-step disassembly process. Click each step to expand the details.
+    </p>
+
+    <div class="accordion-card">
+
+      <details>
+        <summary>Step 1: Removing the Front Suspension &amp; Steering Rack</summary>
+        <div class="accordion-body">
+          <div class="blog-prose">
+            <p>I started in the summer of 2025. The first step was removing the front subframe to open the oil pan and get a good view of the engine internals. One of the most challenging parts was removing the front steering rack and pinion. To remove that, I first had to disassemble the front suspension.</p>
+            <p>I removed the front wheels and supported the vehicle from the front jack points on the chassis. Then I took off the bolts that connect the front control arms and thrust arms to the subframe. Actually, first I had to remove all of the plastic shielding as well. My god, these cars have a ton of shielding held on by dozens of clips and little self-tapping 8mm hex-with-washer fasteners. I spent a lot of time wiggling out the steering rack. The power steering lines are not friendly on this car because of the tight packaging of xDrive. In fact, originally all FXX-series cars were supposed to have electric power steering, but the xDrive AWD version did not have the space because the front of the car needed to allocate room for the front drive axles and front differential. So the older hydraulic power steering system was packaged with these cars instead.</p>
+            <p>After removing the tie rods from the front wheel hub knuckles, disconnecting the power steering lines (draining and catching the fluid, it's expensive CHF-11S after all), and disconnecting the electrical connectors, I finally got the first step done.</p>
+          </div>
+          <div class="image-gallery" data-gallery="intro-demo">
+            <button type="button" class="image-gallery__thumb" aria-label="Open gallery image 1">
+              <img src="car-repair-blog-images\ch5\1.jpg" alt="">
+              <span class="image-gallery__caption">Steering rack and pinion removal</span>
+            </button>
+            <button type="button" class="image-gallery__thumb" aria-label="Open gallery image 2">
+              <img src="car-repair-blog-images\ch5\2.jpg" alt="">
+              <span class="image-gallery__caption">Front suspension inside view</span>
+            </button>
+            <button type="button" class="image-gallery__thumb" aria-label="Open gallery image 3">
+              <img src="car-repair-blog-images\ch5\3.jpg" alt="">
+              <span class="image-gallery__caption">Front suspension outside view</span>
+            </button>
+          </div>
+        </div>
+      </details>
+
+      <details>
+        <summary>Step 2: Subframe Connections &amp; Engine Mounts</summary>
+        <div class="accordion-body">
+          <div class="blog-prose">
+            <p>The next step was removing all the remaining connections holding the subframe to the car. I decided this would be the best course of action because it would give me the most room to work with. I wanted as much space as possible because I was working in a cramped garage on my back under the car, rather than with a nice spacious shop lift or hoist. It didn't help much that during the time the car was in storage, a rodent had moved into the engine bay and filled the subframe with dirt and feces, which I slowly scrubbed out as I worked.</p>
+            <p>I disconnected the steering shaft and locked the wheel straight in the driver seat using the seatbelt. This is to prevent accidentally turning the wheel too far and destroying the steering wheel's clockspring mechanism. I also marked the position where the shaft was attached so I could reinstall it in the same spot. After this was complete, there were still a few connections and wires attached to parts of the subframe that I knew would have to be removed. One of the trickier ones was the transmission cooler lines that are bolted down with a metal bracket. There's really no space and no good angle to tackle those fasteners. I had to literally twist myself into the passenger wheel well to reach them, and painstakingly remove the bolts one-eighth of a turn at a time. It took over 30 minutes to remove each of the three bolts holding it on!</p>
+            <p>Now onto the engine mounts. The N55 engine has two mounts that hold the engine in place and support its full weight on the car subframe. Additionally, the back of the engine is supported by its connection to the transmission bellhousing. Note that because of this design, when the subframe is out, the entire engine is just hanging by the transmission. Normally this would permanently damage the engine and transmission if it were not supported, but I had added an engine support bar. This support bar sits on top of the engine bay and is made of thick steel square tubing. The tool itself is nearly 50 lbs, and it needs to contact the strong inner part of the car frame chassis. So I removed the top plastic shielding on the engine bay and assembled and set up the support bar via a chain and hook, into a tow hook that threads into the top of the engine block. Now I would be able to remove the engine mount bolts and slowly lift the engine off the subframe to protect it from any damage when I dropped the subframe out of the car. After all the connections I could find were removed and all brackets and shielding taken off, I was finally ready to drop the subframe and gain access to the oil pan.</p>
+          </div>
+          <div class="image-gallery" data-gallery="intro-demo">
+            <button type="button" class="image-gallery__thumb" aria-label="Open gallery image 1">
+              <img src="car-repair-blog-images\ch5\4.jpg" alt="">
+              <span class="image-gallery__caption">Engine support bar</span>
+            </button>
+            <button type="button" class="image-gallery__thumb" aria-label="Open gallery image 2">
+              <img src="car-repair-blog-images\ch5\5.jpg" alt="">
+              <span class="image-gallery__caption">Engine support side view</span>
+            </button>
+            <button type="button" class="image-gallery__thumb" aria-label="Open gallery image 3">
+              <img src="car-repair-blog-images\ch5\6.jpg" alt="">
+              <span class="image-gallery__caption">Terrible bolt to get to!</span>
+            </button>
+          </div>
+        </div>
+      </details>
+
+      <details>
+        <summary>Step 3: Dropping the Subframe</summary>
+        <div class="accordion-body">
+          <div class="blog-prose">
+            <p>But it didn't budge. As it turned out, documentation for these cars is a bit limited online, and not many people have taken the effort to do the types of repair I was attempting. It turned out the subframe also bolts to the front crash structure to really tie the bumper and whole front of the car into a single strong part. I had to remove those bolts too, and wiggle around a bunch of tubing. The bolts were only accessible from behind the front brake cooling air ducts, which also had to be removed. Finally, I was able to slowly wiggle the subframe down onto a hydraulic floor jack and drop it out of the car.</p>
+          </div>
+          <div class="image-gallery" data-gallery="intro-demo">
+            <button type="button" class="image-gallery__thumb" aria-label="Open gallery image 1">
+              <img src="car-repair-blog-images\ch5\7.jpg" alt="">
+              <span class="image-gallery__caption">A really long extension chain!</span>
+            </button>
+            <button type="button" class="image-gallery__thumb" aria-label="Open gallery image 2">
+              <img src="car-repair-blog-images\ch5\8.jpg" alt="">
+              <span class="image-gallery__caption">Subframe dropped</span>
+            </button>
+            <button type="button" class="image-gallery__thumb" aria-label="Open gallery image 3">
+              <img src="car-repair-blog-images\ch5\9.jpg" alt="">
+              <span class="image-gallery__caption">Subframe after cleaning</span>
+            </button>
+          </div>
+        </div>
+      </details>
+
+      <details>
+        <summary>Step 4: Axles, Differential &amp; Oil Pan Access</summary>
+        <div class="accordion-body">
+          <div class="blog-prose">
+            <p>Now I finally had access to the engine. But wait, there was still a little more work to do. These cars are AWD, and in an effort to reduce vertical height and achieve compact packaging, BMW designed them so the front driveshaft passes through the engine oil pan via a machined axle tunnel with supporting bearings and oil seals inside. This meant the axles and front differential had to come out before the oil pan could be removed. So I purchased a CV axle slide hammer tool to help with this job. I had actually tried for hours to remove the axle from the differential using pry bars and hammers, but even with the utmost strength I could muster, it would not budge. However, just a few whacks with the right tool did the job. This step also required a 17mm hex bit to remove the axle from the front wheel hub assembly.</p>
+            <p>Finally! I could open up the engine! Or not. One last thing to do: the front of the oil pan is integrated into a mounting bracket for the power steering pump. So, removing the front engine fan, loosening the engine belt tensioner, and then loosening the pump (which I let hang by some zip ties), followed by removing the power steering pump bracket, finally gave me access to the oil pan.</p>
+            <p>My next step was to assess the internals of the engine. I used an extension and an E10 socket to remove all the oil pan bolts, then dropped the oil pan. Clearly the oil had not been changed often enough in this car's lifetime. The oil pan was filled with metal debris and dark carbon deposits. Inside the engine, there is a suction plate and oil pump, which also needed removing. Then finally I was free to inspect the connecting rod bearings. I broke them loose with a breaker bar, then labeled and inspected each one for damage. I also removed the ignition coils and spark plugs and plugged the holes with cloth to make the engine easy to turn over. This let the pistons slide easily in their bores for inspection and bearing replacement.</p>
+          </div>
+          <div class="image-gallery" data-gallery="intro-demo">
+            <button type="button" class="image-gallery__thumb" aria-label="Open gallery image 1">
+              <img src="car-repair-blog-images\ch5\10.jpg" alt="">
+              <span class="image-gallery__caption">Underside view of powertrain</span>
+            </button>
+            <button type="button" class="image-gallery__thumb" aria-label="Open gallery image 2">
+              <img src="car-repair-blog-images\ch5\11.jpg" alt="">
+              <span class="image-gallery__caption">Removed axles</span>
+            </button>
+            <button type="button" class="image-gallery__thumb" aria-label="Open gallery image 3">
+              <img src="car-repair-blog-images\ch5\12.jpg" alt="">
+              <span class="image-gallery__caption">Removed oil pan</span>
+            </button>
+          </div>
+        </div>
+      </details>
+
+      <details>
+        <summary>Step 5: Bearing Inspection &amp; Metallurgical Analysis</summary>
+        <div class="accordion-body">
+          <div class="blog-prose">
+            <p>Now a key thing to understand is that the crankshaft of this engine is made of induction-hardened cast steel with a surface hardness of approximately 50 Rockwell (HRC). Consequently, the debris that infiltrated the engine consisted primarily of particles in the 0.01 to 0.2 mm range, made of a softer aluminum alloy. After Plastigauging the crank journals, I noticed their specs did not differ much from new, at around 0.035 mm clearance. The surface properties of the crank journals had changed, however. I did consider polishing them with Scotch-Brite or DIY methods, but I refrained because of the potential to push the bearing out of round. The out-of-round tolerance of these parts is as tight as the oil clearance, which is fractions of a millimeter. This is much too small to accurately determine by even the most skilled hands, so instead I thoroughly inspected the surface finish by hand.</p>
+            <div class="image-gallery" data-gallery="intro-demo">
+              <button type="button" class="image-gallery__thumb" aria-label="Open gallery image 1">
+                <img src="car-repair-blog-images\ch5\13.jpg" alt="">
+                <span class="image-gallery__caption">Engine crankshaft and oil pump</span>
+              </button>
+              <button type="button" class="image-gallery__thumb" aria-label="Open gallery image 2">
+                <img src="car-repair-blog-images\ch5\14.jpg" alt="">
+                <span class="image-gallery__caption">Connecting rod bearing journal</span>
+              </button>
+              <button type="button" class="image-gallery__thumb" aria-label="Open gallery image 3">
+                <img src="car-repair-blog-images\ch5\15.jpg" alt="">
+                <span class="image-gallery__caption">Lower bearings</span>
+              </button>
+            </div>
+            <p>I noticed that even with moderate pressure, my fingernails were unable to catch any ridges on the crank journal. This means the scarring from debris is less than around 20 to 30 microns. From the evidence, I determined the damage to be mainly cosmetic due to a phenomenon known as "metallic smearing," where softer metal becomes embedded into the surface of harder metal, like how a crayon draws on paper. It's tiny microscopic fibers catching tiny microscopic flakes of material that turn the surface a visibly different color.</p>
+            <p>Additionally, after studying wear mechanisms and wear resistance in surface hardness, I determined that the main damage would be limited. 
+            <div class="image-placeholder">
+              <img src="car-repair-blog-images\ch5\16.PNG" alt="Microploughing">
+              <span>Image: Destroyed turbocharger compressor</span>
+            </div>
+            <div class="link-shelf" style="margin: 20px 0 28px;">
+              <a href="https://www.researchgate.net/figure/The-schematic-illustration-of-microploughing-and-microcutting-actions-by-the-blunt-and_fig11_346923067" target="_blank" rel="noopener" class="link-preview">
+                <div class="link-preview-icon" style="font-size: 1.1rem;">&#x1F4CB;</div>
+                <div class="link-preview-text">
+                  <div class="link-preview-site">
+                    <span class="link-preview-tag">Articles</span>
+                    Researchgate.net
+                  </div>
+                  <div class="link-preview-title">Wear resistance and hardness</div>
+                  <div class="link-preview-desc">This study aims to understand the effects of toughness and hardness on two-body wear of nanostructured carbide-free bainitic steels. For this purpose, three different steel grades were austempered at 250 °C to obtain carbide-free bainitic microstructures with different mechanical properties. The mechanical properties were determined in terms of fra...</div>
+                </div>
+                <div class="link-preview-arrow">
+                  <svg viewBox="0 0 24 24"><path d="M10 6L8.59 7.41 13.17 12l-4.58 4.59L10 18l6-6z"/></svg>
+                </div>
+              </a>
+            </div>  
+            Because the parent material is much harder than the debris, damage would be limited to micro-ploughing rather than micro-cutting, cracking, or spalling due to the properties of the materials involved. In this scenario, micro-ploughing creates a smooth transition from the surface scar to the surrounding area, like a speed bump rather than a curb. This reduces its impact on the oil film layer, or breaching it and causing later bearing-to-surface contact that could make the engine fail again. (We will see how well my analysis held up based on empirical results later.) It was finally at this point that I decided the engine would be worth saving, and I would attempt a complete repair of the vehicle.</p>
+          </div>
+          
+          <div class="callout-card success" style="margin-top: 16px;">
+            <div class="callout-icon">&#x2705;</div>
+            <div class="callout-body">
+              <h4>Decision Made</h4>
+              <p>After thorough metallurgical analysis, the engine was deemed worth saving. The repair would proceed.</p>
+            </div>
+          </div>
+        </div>
+      </details>
+
+    </div>
+  </section>
+
+  <div class="section-divider"><hr></div>
+
+  <!-- ============================================================
+       SECTION 6: BOTTOM-END REBUILD
+       ============================================================ -->
+  <section class="section" id="bottom-end">
+    <p class="section-label">Chapter 6</p>
+    <h2 class="section-title">Bottom-End Rebuild</h2>
+    <p style="color: var(--text-muted); line-height: 1.7; margin-bottom: 24px;">
+      With the decision made to save the engine, it was time to order parts and begin reassembly. Click each step to expand.
+    </p>
+
+    <div class="blog-prose" style="margin-bottom: 24px;">
+      <p>I then ordered the parts I needed from FCP Euro and then got to work:</p>
+    </div>
+
+    <div class="accordion-card">
+
+      <details>
+        <summary>Bearing Installation &amp; Torquing</summary>
+        <div class="accordion-body">
+          <div class="blog-prose">
+            <p>After the parts arrived, I began by reassembling the bottom end of the engine first because I noticed my flexplate had started to rust from air exposure. I wanted to seal up the engine as soon as possible. Using Permatex assembly lube and a plastic wedge, I rolled new bearings into place for each piston. Then, using an angle gauge, I torqued each piston's connecting rod bolts to the required specifications.</p>
+            <p>Honestly, this was extremely difficult to do while lying upside down with little leverage and minimal friction on the cardboard underneath. I kept sliding around because the force required to tighten these grade 12.9 bolts is incredible. I was able to complete three cylinders before I didn't have enough energy to continue and had to wait another day.</p>
+          </div>
+          <div class="image-gallery" data-gallery="intro-demo">
+            <button type="button" class="image-gallery__thumb" aria-label="Open gallery image 1">
+              <img src="car-repair-blog-images\ch6\1.jpg" alt="">
+              <span class="image-gallery__caption">Angle gauge for torque (20 Nm+70°+70°)</span>
+            </button>
+            <button type="button" class="image-gallery__thumb" aria-label="Open gallery image 2">
+              <img src="car-repair-blog-images\ch6\2.jpg" alt="">
+              <span class="image-gallery__caption">Bearing clearance measured with plastiguage</span>
+            </button>
+            <button type="button" class="image-gallery__thumb" aria-label="Open gallery image 3">
+              <img src="car-repair-blog-images\ch6\3.jpg" alt="">
+              <span class="image-gallery__caption">New Rheingold bearings</span>
+            </button>
+          </div>
+        </div>
+      </details>
+
+      <details>
+        <summary>Cylinder Bore Inspection</summary>
+        <div class="accordion-body">
+          <div class="blog-prose">
+            <p>During the process, I also thoroughly inspected the cylinder bores for any signs of damage. Honestly, the cylinders looked amazing. They were extremely smooth and shiny with a nice light yellow varnish. These engines use a plasma-sprayed liner with microscopic pores to hold oil during operation. It is imperative that they look spotless, and mine did. This confirmed the aluminum particles had not made their way past the cylinder walls into the engine. The debris must have entered through the intake port, where a tiny hole opens from each intake runner to the crankcase to route oil fumes into the combustion chamber. Under boost, this airflow reverses and forces extra air into the crankcase. This was the path the debris took!</p>
+          </div>
+
+          <div class="callout-card warning" style="margin-top: 16px;">
+            <div class="callout-icon">&#x26A0;&#xFE0F;</div>
+            <div class="callout-body">
+              <h4>Caution</h4>
+              <p>It is important to note that you must be extremely careful not to push the piston too high, or the piston rings will unseat. If that happens, you will be forced to rebuild the engine entirely.</p>
+            </div>
+          </div>
+        </div>
+      </details>
+
+      <details>
+        <summary>Final Bottom-End Assembly</summary>
+        <div class="accordion-body">
+          <div class="blog-prose">
+            <p>After carefully reassembling the engine's bottom end connecting rods, I replaced the engine oil pump and flexplate with new bolts (all internal bolts are TTY and need to be replaced). I installed new oil pan bolts and a new oil pan gasket to seal up the engine. I also cleaned out the oil pan first with heavy-duty industrial grease remover until it was spotless inside and out!</p>
+          </div>
+          <div class="image-gallery" data-gallery="intro-demo">
+            <button type="button" class="image-gallery__thumb" aria-label="Open gallery image 1">
+              <img src="car-repair-blog-images\ch6\4.jpg" alt="">
+              <span class="image-gallery__caption">Old bearings and connecting rod bolts</span>
+            </button>
+            <button type="button" class="image-gallery__thumb" aria-label="Open gallery image 2">
+              <img src="car-repair-blog-images\ch6\5.jpg" alt="">
+              <span class="image-gallery__caption">Cleaned oil pan with new gasket</span>
+            </button>
+            <button type="button" class="image-gallery__thumb" aria-label="Open gallery image 3">
+              <img src="car-repair-blog-images\ch6\6.jpg" alt="">
+              <span class="image-gallery__caption">New oil pan to engine block bolts</span>
+            </button>
+            <button type="button" class="image-gallery__thumb" aria-label="Open gallery image 4">
+              <img src="car-repair-blog-images\ch6\7.jpg" alt="">
+              <span class="image-gallery__caption">Removing debris from oil pickup tube</span>
+            </button>
+            <button type="button" class="image-gallery__thumb" aria-label="Open gallery image 5">
+              <img src="car-repair-blog-images\ch6\8.jpg" alt="">
+              <span class="image-gallery__caption">Oil pump chain and timing chain</span>
+            </button>
+          </div>
+        </div>
+      </details>
+
+    </div>
+  </section>
+
+  <div class="section-divider"><hr></div>
+
+  <!-- ============================================================
+       SECTION 7: TURBO REBUILD
+       ============================================================ -->
+  <section class="section" id="turbo-rebuild">
+    <p class="section-label">Chapter 7</p>
+    <h2 class="section-title">Turbo Rebuild</h2>
+    <p style="color: var(--text-muted); line-height: 1.7; margin-bottom: 24px;">
+      With the bottom end sealed, the next major task was rebuilding the destroyed turbocharger. Click each step to expand.
+    </p>
+
+    <div class="accordion-card">
+
+      <details>
+        <summary>Sourcing the Turbo Core</summary>
+        <div class="accordion-body">
+          <div class="blog-prose">
+            <p>Once I decided to repair the engine, I knew I would also need to replace the turbocharger. A complete replacement turbocharger is quite expensive, so I opted to rebuild the turbine core by hand instead. This was a significantly cheaper option. You can almost always trade repair costs for additional labor, and this is what I did here since it was my own labor.</p>
+            <p>I decided to go with a Chinese-made turbine core for several reasons. My logic was this: China has a rather advanced industrialized society, and much of their population prefers German luxury cars because they are seen as a status symbol of wealth. Additionally, there must be a substantial domestic repair market for these cars because authentic German parts are rather expensive. So I searched for their domestically produced clones.</p>
+            <p>Upon finding one, I investigated the company at <a href="https://powertecturbo.com/" target="_blank" rel="noopener">https://powertecturbo.com/</a>. Although their claimed VSR stability is quite impressive (0.5 mm/s), practical real-world tolerances suggest that the absolute best available units are around 1 to 2 mm/s, and aftermarket options can range from 4 to 6 mm/s, which is still acceptable. I was still skeptical until I stumbled upon their <a href="https://powertecturbo.com/about-us/" target="_blank" rel="noopener">https://powertecturbo.com/about-us/</a> page and saw that they actually have German-made balancing machines and 5-axis CNC machines, specifically ZEISS dimensional measurement and Schenck auto-balancing equipment. Billet aluminum is not hard to come by as it is reasonably priced, so I took an educated risk and tried one of their products.</p>
+          </div>
+
+          <div class="image-placeholder">
+            <img src="car-repair-blog-images\ch7\1.jpg" alt="Turbo core swap in progress">
+            <span>Image: New turbo core from powertec</span>
+          </div>
+        </div>
+      </details>
+
+      <details>
+        <summary>Turbo Removal &amp; Core Swap</summary>
+        <div class="accordion-body">
+          <div class="blog-prose">
+            <p>For the turbine rebuild, removing the turbo from the car was quite a challenge. The Hot-V design of the N55 means the turbo assembly sits underneath the engine at a 40-degree angle, sort of hanging down. The turbo is surrounded by a compact packaging of coolant tubes, electrical connectors, and airflow passages. I disassembled and drained the engine coolant from the water jacket off the block itself, then removed all the tubing and electrical connections, bagging and labeling each one. Next, I broke apart the turbine housing and removed the turbo core, which was absolutely destroyed. Using a clever trick with paper to make a positioning template, I replaced the old core with a new one. I washed and cleaned all debris and oil off the housing, the compressor side, and the exhaust manifold leading to the turbine side. I fitted new graphite gaskets and new copper stud bolts, then bolted it back onto the engine.</p>
+          </div>
+          <div class="image-gallery" data-gallery="intro-demo">
+            <button type="button" class="image-gallery__thumb" aria-label="Open gallery image 1">
+              <img src="car-repair-blog-images\ch7\2.jpg" alt="">
+              <span class="image-gallery__caption">Old vs new turbine core</span>
+            </button>
+            <button type="button" class="image-gallery__thumb" aria-label="Open gallery image 2">
+              <img src="car-repair-blog-images\ch7\3.jpg" alt="">
+              <span class="image-gallery__caption">Paper template for alignment</span>
+            </button>
+            <button type="button" class="image-gallery__thumb" aria-label="Open gallery image 3">
+              <img src="car-repair-blog-images\ch7\4.jpg" alt="">
+              <span class="image-gallery__caption">Compressor housing</span>
+            </button>
+          </div>
+        </div>
+      </details>
+
+      <details>
+        <summary>Reinstalling the Turbocharger</summary>
+        <div class="accordion-body">
+          <div class="blog-prose">
+            <p>This was a rather difficult endeavor as well, because the entire turbine assembly weighs around 50 lbs and sits in an extremely awkward position. I managed this by "ratcheting" up the assembly using heavy-duty zip ties wrapped around my turbo and the engine support bar until I could get two bolts in place. Then I seated the turbo to the engine block and tightened everything according to the specific BMW-supplied torque sequence for the 15 copper bolts. Many extensions were needed, and this was tough! There is very little space to work with in this engine haha.</p>
+          </div>
+          <div class="image-gallery" data-gallery="intro-demo">
+            <button type="button" class="image-gallery__thumb" aria-label="Open gallery image 1">
+              <img src="car-repair-blog-images\ch7\5.jpg" alt="">
+              <span class="image-gallery__caption">New CHRA fitted into housing</span>
+            </button>
+            <button type="button" class="image-gallery__thumb" aria-label="Open gallery image 2">
+              <img src="car-repair-blog-images\ch7\6.jpg" alt="">
+              <span class="image-gallery__caption">Turbo assembly</span>
+            </button>
+            <button type="button" class="image-gallery__thumb" aria-label="Open gallery image 3">
+              <img src="car-repair-blog-images\ch7\7.jpg" alt="">
+              <span class="image-gallery__caption">Turbo assembly</span>
+            </button>
+            <button type="button" class="image-gallery__thumb" aria-label="Open gallery image 4">
+              <img src="car-repair-blog-images\ch7\8.jpg" alt="">
+              <span class="image-gallery__caption">New gaskets</span>
+            </button>
+            <button type="button" class="image-gallery__thumb" aria-label="Open gallery image 5">
+              <img src="car-repair-blog-images\ch7\9.jpg" alt="">
+              <span class="image-gallery__caption">Process of installation</span>
+            </button>
+            <button type="button" class="image-gallery__thumb" aria-label="Open gallery image 6">
+              <img src="car-repair-blog-images\ch7\10.jpg" alt="">
+              <span class="image-gallery__caption">Installed in engine</span>
+            </button>
+          </div>
+        </div>
+      </details>
+
+    </div>
+  </section>
+
+  <div class="section-divider"><hr></div>
+
+  <!-- ============================================================
+       SECTION 8: REASSEMBLY & RWD CONVERSION
+       ============================================================ -->
+  <section class="section" id="reassembly">
+    <p class="section-label">Chapter 8</p>
+    <h2 class="section-title">Reassembly &amp; RWD Conversion</h2>
+    <p style="color: var(--text-muted); line-height: 1.7; margin-bottom: 24px;">
+      With the major engine work complete, it was time to put everything back together &mdash; and make a bold modification. Click each step to expand.
+    </p>
+
+    <div class="accordion-card">
+
+      <details>
+        <summary>Subframe &amp; Engine Mount Reinstallation</summary>
+        <div class="accordion-body">
+          <div class="blog-prose">
+            <p>Now after the major repairs had been completed, I still had to replace all of the supporting structures, front suspension, fluids, and shielding. I took the time to do this carefully, as I had already put three months of physical work into the project. Replacing the front subframe was not too hard. The main trick is to connect the engine mounts first, because when they are new, the mounts are actually too large to fit between the engine and subframe. Additionally, the subframe of this F-series chassis is pinned with dowels, so alignment is very easy and almost impossible to screw up. I took my time and slowly raised it with a floor jack into position before tightening down the subframe bolts. According to ISTA, these bolts need to be replaced, so I replaced four of the six bolts. I didn't bother replacing the last two rear subframe bolts, and instead torqued them down to a calculated yield range that I figured would hold about 80% of their max rated clamping force, around 200 Nm. After all this, I could finally take off the engine support bar. The engine was once again supporting its own weight on the car's frame.</p>
+          </div>
+          <div class="image-gallery" data-gallery="intro-demo">
+            <button type="button" class="image-gallery__thumb" aria-label="Open gallery image 1">
+              <img src="car-repair-blog-images\ch8\1.jpg" alt="">
+              <span class="image-gallery__caption">Front suspension</span>
+            </button>
+            <button type="button" class="image-gallery__thumb" aria-label="Open gallery image 2">
+              <img src="car-repair-blog-images\ch8\2.jpg" alt="">
+              <span class="image-gallery__caption">Removal of engine support after subframe install</span>
+            </button>
+            <button type="button" class="image-gallery__thumb" aria-label="Open gallery image 3">
+              <img src="car-repair-blog-images\ch8\3.jpg" alt="">
+              <span class="image-gallery__caption">Its all coming together</span>
+            </button>
+          </div>
+        </div>
+      </details>
+
+      <details>
+        <summary>Steering Rack &amp; Front Suspension</summary>
+        <div class="accordion-body">
+          <div class="blog-prose">
+            <p>The next step was replacing the rack and pinion into the subframe, which was surprisingly easier than removing it. Just a bit of wiggling and it went right into place. Connecting the steering rack lines was a little more tricky because once the rack is in place, there is little room to reach the bolts for the lines. But with a little bit of contortion, I was able to tighten them down. It's not too difficult because the torque specs for these small bolts and screws are pretty low, so hand tight will do for most of them. After all, it is the O-ring which forms the mechanical seal in these systems, not the clamping pressure of the bolt. It's always important to understand the fundamentals of the system you are working on to understand how and why you can and can't do things the way you want!</p>
+            <p>After that, I put the front suspension back together, threading the large M14x110mm bolts into the subframe and control arms on each side. I hooked up the tie rods to the wheel knuckles and connected everything back. It was at this point that I decided I wanted to permanently convert my vehicle to RWD. There are plenty of forum posts about people attempting this specific thing and plenty more debates surrounding the topic. I would like to formally bring my experience and reasoning into the conversation.</p>
+          </div>
+        </div>
+      </details>
+
+      <details>
+        <summary>RWD Conversion Procedure</summary>
+        <div class="accordion-body">
+          <div class="blog-prose">
+            <p>For my RWD conversion, I simply removed the output shaft of the ATC35L transfer case. It should be noted that the rear differential will now take on 100% of the driveline load, and this is actually okay because the differential part number for the RWD and AWD cars is the same. I then disassembled the front axles and took their outer Rzeppa joint couplings and bolted those into the front wheel hubs. The reason I did this is because the front wheel bearings are actually tapered bearings, and the bearing preload is set by a bolt that connects from the brake rotor side to the CV axle behind it. It is essential to keep this part, as it actually holds the bearing assembly together. Without it, the wheel will fall off under driving load! Do not do this modification if you don't know what you are doing!</p>
+          </div>
+
+          <div class="callout-card danger" style="margin-top: 16px;">
+            <div class="callout-icon">&#x1F6D1;</div>
+            <div class="callout-body">
+              <h4>Warning</h4>
+              <p>The front wheel bearings require the CV axle coupling to maintain bearing preload. Without it, the wheel will fall off under driving load. Do not attempt this modification without full understanding of the system.</p>
+            </div>
+          </div>
+        </div>
+      </details>
+
+      <details>
+        <summary>Transfer Case Analysis &amp; the x-delete Debate</summary>
+        <div class="accordion-body">
+          <div class="blog-prose">
+            <p>Additionally, there have been many rumors online about x-delete (which is the software method) of turning these cars into RWD mode. The creators of x-delete claim that no other solution than their software is safe (of course they would claim that!) and that physically removing the transfer case output shaft will cause the transfer case to overheat because there is an oil pump on the front output shaft. Based on my research and the ATC35L design diagrams, I believe that the ATC35L transfer case does not have a dedicated oil pump. Instead, the clutch packs are lubricated as a result of the internal gear interference as seen in this diagram.</p>
+          </div>
+
+          <div class="image-placeholder">
+            <img src="car-repair-blog-images\ch8\4.png" alt="ATC35L transfer case diagram">
+            <span>Image: ATC35L transfer case internal diagram</span>
+          </div>
+
+          <div class="blog-prose">
+            <p>The key design principle behind this transfer case is that it is non-chain driven, which is odd. Traditionally, transfer cases do use chain drives. However, notice that this transfer case has two meshing gears (41, 43) and an oil inlet (40) between the gears where both sets of teeth mesh. This creates a "pumping" action by increasing the pressure of the oil in that region of the inlet. Then by passive pressure, the inlet allows oil to flow upwards to the clutch packs.</p>
+            <p>Also, note that this TC requires a very specific oil, a type of PAO called Shell TF-0870 or an equivalent SAE 75W GL-4 oil without sulfur additives. You cannot use differential oil, as it will eat away the clutches and plastics and rubbers inside. The reason for this design choice is the same reason why they are able to get away without a dedicated oil pump: the PAO resists viscosity change at temperatures, allowing for oil flow to be exactly in design specifications. Other fluids will not fulfill this property, which is why this very specific, very expensive fluid is required for the ATC35L.</p>
+            <p>Because of this, I made sure to top up my TC with some fresh fluid just to be sure it was getting all it needs to operate. Even though I no longer use the clutch packs for front wheel output, I topped the fluid up anyway to ensure reliable operation of the internal ball bearings and smooth power transfer. I used a GL-4 equivalent from Red Line Racing.</p>
+          </div>
+        </div>
+      </details>
+
+    </div>
+  </section>
+
+  <div class="section-divider"><hr></div>
+
+  <!-- ============================================================
+       SECTION 9: FIRST START & TESTING
+       ============================================================ -->
+  <section class="section" id="first-start">
+    <p class="section-label">Chapter 9</p>
+    <h2 class="section-title">First Start &amp; Testing</h2>
+    <div class="blog-prose">
+      <p>After all of this had been completed, I refilled the engine coolant with OEM brand premix. This is another critical step that does not have any reliable substitutes. BMW uses a very specific silicated organic additive technology formulated specifically for aluminum engine blocks and components. I ran the bleed procedure according to ISTA repair documentation until the coolant reservoir was filled to maximum. I also filled the engine with 5W-40 SuperTech oil. I went with a budget BMW-LL01 certified oil because I wanted to wash out any remaining contaminants from the engine and internal oil passages, since I cannot manually reach everywhere that debris might hide.</p>
+      <p>I connected the car battery and then let the engine turn over with the fuel injector harness disconnected. Remember, the spark plugs and coils were also out at this point, so the engine was just freely spinning. This is important because the N55 suffers from dry starts that can easily destroy the engine. This is a well-documented phenomenon whenever the oiling circuit is opened. I primed the engine oiling system by turning it over until I saw oil in the oil filter at the top of the engine. Then I primed it again, and finally one more time to make sure oil had reached my turbocharger feed as well. Finally, I was ready to start up the engine!</p>
+    </div>
+
+    <div class="callout-card success" style="margin: 28px 0;">
+      <div class="callout-icon">&#x2705;</div>
+      <div class="callout-body">
+        <h4>First Start Successful</h4>
+        <p>After months of work, the engine fired up and ran smoothly. A moment of incredible relief and pride.</p>
+      </div>
+    </div>
+
+    <div class="blog-prose">
+      <p>You can see the first start here:</p>
+    </div>
+
+    <!-- Put your exported file at media/first-start.mp4 (H.264 + AAC in .mp4 works everywhere). Optional poster: media/first-start-poster.jpg -->
+    <figure class="blog-video-embed" aria-label="First engine start after rebuild">
+      <div class="blog-video-embed__frame">
+        <video
+          controls
+          playsinline
+          preload="metadata"
+          aria-label="First engine start after rebuild">
+          <source src="car-repair-blog-images\ch8\first-start.mp4" type="video/mp4">
+          <p class="blog-video-embed__fallback">Your browser can’t play embedded video here. <a href="car-repair-blog-images\ch8\first-start.mp4">Download the MP4</a> or use a current browser.</p>
+        </video>
+      </div>
+      <figcaption class="blog-video-embed__caption">First engine start after rebuild</figcaption>
+    </figure>
+  </section>
+
+  <div class="section-divider"><hr></div>
+
+  <!-- ============================================================
+       SECTION 10: 20,000KM LATER UPDATE
+       ============================================================ -->
+  <section class="section" id="update-20k">
+    <p class="section-label">Chapter 10</p>
+    <h2 class="section-title">20,000km Later Update</h2>
+    <div class="blog-prose" style="margin-bottom: 32px;">
+      <p>After running for a few minutes, I flushed the oil out with fresh oil and took it for a drive. It drove wonderfully smooth! Now, at the time of writing this blog in the spring of 2026, 20,000 km later, it is still driving excellently. I have changed the oil two more times since then at increasing intervals, and each time the oil has come out with less debris. This is why I am confident all the existing debris has been flushed out. The turbine is building boost nicely and it pulls hard, so everything is working as expected. There have been no error codes since the first startup!</p>
+    </div>
+
+    <div class="counter-row" id="counterRow1">
+      <div class="counter-item">
+        <div class="counter-value"><span data-target="19399">0</span><span class="counter-suffix"> km</span></div>
+        <div class="counter-label">Driven Since Rebuild</div>
+      </div>
+      <div class="counter-item">
+        <div class="counter-value"><span data-target="4">0</span></div>
+        <div class="counter-label">Oil Changes Post-Rebuild</div>
+      </div>
+      <div class="counter-item">
+        <div class="counter-value"><span data-target="0">0</span></div>
+        <div class="counter-label">Error Codes</div>
+      </div>
+      <div class="counter-item">
+        <div class="counter-value"><span data-target="5">0</span><span class="counter-suffix"> mo</span></div>
+        <div class="counter-label">Total Build Time</div>
+      </div>
+    </div>
+
+    <div class="blog-image-row">
+      <div class="image-placeholder">
+        <img src="car-repair-blog-images\ch10\1.jpg" alt="">
+        <span>Image: car</span>
+      </div>
+      <div class="image-placeholder">
+        <img src="car-repair-blog-images\ch10\2.jpg" alt="">
+        <span>Image: car</span>
+      </div>
+    </div>
+  </section>
+  <script>
+  (function() {
+    const row = document.getElementById('counterRow1');
+    let animated = false;
+
+    function animateCounters() {
+      if (animated) return;
+      animated = true;
+      row.querySelectorAll('[data-target]').forEach(el => {
+        const target = parseInt(el.dataset.target);
+        const duration = 2000;
+        const start = performance.now();
+
+        function tick(now) {
+          const elapsed = now - start;
+          const progress = Math.min(elapsed / duration, 1);
+          const eased = 1 - Math.pow(1 - progress, 3);
+          el.textContent = Math.floor(eased * target).toLocaleString();
+          if (progress < 1) requestAnimationFrame(tick);
+          else el.textContent = target.toLocaleString();
+        }
+
+        requestAnimationFrame(tick);
+      });
+    }
+
+    const observer = new IntersectionObserver((entries) => {
+      entries.forEach(entry => { if (entry.isIntersecting) { animateCounters(); observer.unobserve(row); } });
+    }, { threshold: 0.4 });
+    observer.observe(row);
+  })();
+  </script>
+
+  <div class="section-divider"><hr></div>
+
+  <!-- ============================================================
+       SECTION 11: LESSONS LEARNED & TOTAL COSTS
+       ============================================================ -->
+  <section class="section" id="costs">
+    <p class="section-label">Chapter 11</p>
+    <h2 class="section-title">Lessons Learned &amp; Total Costs</h2>
+
+    <!-- Total stat cards -->
+    <div class="stat-row" style="margin-bottom: 32px;">
+      <div class="stat-card">
+        <div class="stat-icon">
+          <svg viewBox="0 0 24 24"><path d="M11.8 10.9c-2.27-.59-3-1.2-3-2.15 0-1.09 1.01-1.85 2.7-1.85 1.78 0 2.44.85 2.5 2.1h2.21c-.07-1.72-1.12-3.3-3.21-3.81V3h-3v2.16c-1.94.42-3.5 1.68-3.5 3.61 0 2.31 1.91 3.46 4.7 4.13 2.5.6 3 1.48 3 2.41 0 .69-.49 1.79-2.7 1.79-2.06 0-2.87-.92-2.98-2.1h-2.2c.12 2.19 1.76 3.42 3.68 3.83V21h3v-2.15c1.95-.37 3.5-1.5 3.5-3.55 0-2.84-2.43-3.81-4.7-4.4z"/></svg>
+        </div>
+        <div class="stat-number">$2,318</div>
+        <div class="stat-label">DIY Total (CAD)</div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-icon">
+          <svg viewBox="0 0 24 24"><path d="M22.7 19l-9.1-9.1c.9-2.3.4-5-1.5-6.9-2-2-5-2.4-7.4-1.3L9 6 6 9 1.6 4.7C.4 7.1.9 10.1 2.9 12.1c1.9 1.9 4.6 2.4 6.9 1.5l9.1 9.1c.4.4 1 .4 1.4 0l2.3-2.3c.5-.4.5-1.1.1-1.4z"/></svg>
+        </div>
+        <div class="stat-number">$1,376</div>
+        <div class="stat-label">Parts (CAD)</div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-icon">
+          <svg viewBox="0 0 24 24"><path d="M11.99 2C6.47 2 2 6.48 2 12s4.47 10 9.99 10C17.52 22 22 17.52 22 12S17.52 2 11.99 2zM12 20c-4.42 0-8-3.58-8-8s3.58-8 8-8 8 3.58 8 8-3.58 8-8 8zm.5-13H11v6l5.25 3.15.75-1.23-4.5-2.67z"/></svg>
+        </div>
+        <div class="stat-number">$458</div>
+        <div class="stat-label">Tools (CAD)</div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-icon">
+          <svg viewBox="0 0 24 24"><path d="M23 12l-2.44-2.78.34-3.68-3.61-.82-1.89-3.18L12 3 8.6 1.54 6.71 4.72l-3.61.81.34 3.68L1 12l2.44 2.78-.34 3.69 3.61.82 1.89 3.18L12 21l3.4 1.46 1.89-3.18 3.61-.82-.34-3.68L23 12zm-10 5h-2v-2h2v2zm0-4h-2V7h2v6z"/></svg>
+        </div>
+        <div class="stat-number" style="color: #22c55e;">$7,682</div>
+        <div class="stat-label">Saved vs. Mechanic</div>
+      </div>
+    </div>
+
+    <!-- Cost bar chart -->
+    <div class="bar-chart-card" id="barChart1" style="margin-bottom: 32px;">
+      <div class="bar-chart">
+        <div class="bar-group">
+          <label>DIY Total — <strong>$2,318 CAD</strong></label>
+          <div class="bar-track">
+            <div class="bar-fill accent" style="--bar-width: 7.7%;">$2,318</div>
+          </div>
+        </div>
+        <div class="bar-group">
+          <label style="color: var(--text-muted);">Parts &amp; Consumables — <strong>$1,861</strong></label>
+          <div class="bar-track">
+            <div class="bar-fill success" style="--bar-width: 6.2%;">$1,861</div>
+          </div>
+        </div>
+        <div class="bar-group">
+          <label style="color: var(--text-muted);">Tools — <strong>$458</strong></label>
+          <div class="bar-track">
+            <div class="bar-fill warning" style="--bar-width: 1.5%;">$458</div>
+          </div>
+        </div>
+        <div class="bar-group">
+          <label>Mechanic Quote — <strong>$10,000 CAD</strong></label>
+          <div class="bar-track">
+            <div class="bar-fill muted" style="--bar-width: 33%;">$10,000</div>
+          </div>
+        </div>
+        <div class="bar-group">
+          <label>Dealer Quote — <strong>$30,000 CAD</strong></label>
+          <div class="bar-track">
+            <div class="bar-fill muted" style="--bar-width: 100%;">$30,000</div>
+          </div>
+        </div>
+      </div>
+      <div class="bar-legend" style="margin-top: 16px;">
+        <div class="bar-legend-item"><div class="bar-legend-swatch" style="background: var(--accent);"></div> DIY Total</div>
+        <div class="bar-legend-item"><div class="bar-legend-swatch" style="background: rgba(34,197,94,0.7);"></div> Parts</div>
+        <div class="bar-legend-item"><div class="bar-legend-swatch" style="background: rgba(234,179,8,0.7);"></div> Tools</div>
+        <div class="bar-legend-item"><div class="bar-legend-swatch" style="background: rgba(147,147,160,0.4);"></div> Quotes</div>
+      </div>
+    </div>
+    <script>
+    (function() {
+      const chart = document.getElementById('barChart1');
+      const observer = new IntersectionObserver((entries) => {
+        entries.forEach(entry => {
+          if (entry.isIntersecting) {
+            chart.classList.add('animated');
+            observer.unobserve(chart);
+          }
+        });
+      }, { threshold: 0.3 });
+      observer.observe(chart);
+    })();
+    </script>
+
+    <!-- Tabbed cost breakdown -->
+    <div class="tabs-card" id="tabsCard1">
+      <div class="tabs-nav">
+        <button class="tab-btn active" data-tab="fcp">FCP Euro</button>
+        <button class="tab-btn" data-tab="ebay">eBay</button>
+        <button class="tab-btn" data-tab="amazon">Amazon</button>
+        <button class="tab-btn" data-tab="alibaba">Alibaba</button>
+        <button class="tab-btn" data-tab="inperson">In-Person</button>
+      </div>
+      <div class="tab-panel active" id="tab-fcp">
+        <h4 style="font-weight: 700; margin-bottom: 8px;">FCP Euro — $818.36 CAD (USD $590.84)</h4>
+        <div style="display: flex; flex-direction: column; gap: 6px; font-size: 0.85rem; color: var(--text-muted);">
+        <div style="padding: 6px 0; border-bottom: 1px solid var(--border);">BMW Oil Pan Gasket REI-714129100</div>
+        <div style="padding: 6px 0; border-bottom: 1px solid var(--border);">BMW Engine Mount Bracket Bolt BMW-22116778231 x4</div>
+        <div style="padding: 6px 0; border-bottom: 1px solid var(--border);">BMW Engine Connecting Rod Bearing Set KOB-77967600</div>
+        <div style="padding: 6px 0; border-bottom: 1px solid var(--border);">BMW Exhaust Manifold Nut ELR-593260 x15</div>
+        <div style="padding: 6px 0; border-bottom: 1px solid var(--border);">BMW Catalytic Converter Gasket ELR-737710</div>
+        <div style="padding: 6px 0; border-bottom: 1px solid var(--border);">BMW Engine Oil Pump Pickup Tube O-Ring REI-407311100</div>
+        <div style="padding: 6px 0; border-bottom: 1px solid var(--border);">BMW Exhaust Manifold Gasket ELR-738190 x6</div>
+        <div style="padding: 6px 0; border-bottom: 1px solid var(--border);">BMW Oil Pan Bolt Set CRP-HWK0003</div>
+        <div style="padding: 6px 0; border-bottom: 1px solid var(--border);">BMW Control Arm Bolt BMW-33176760342</div>
+        <div style="padding: 6px 0; border-bottom: 1px solid var(--border);">BMW Subframe Bolt BMW-31106770256</div>
+        <div style="padding: 6px 0; border-bottom: 1px solid var(--border);">BMW Engine Oil Pump Sprocket Bolt BMW-11417520144</div>
+        <div style="padding: 6px 0; border-bottom: 1px solid var(--border);">BMW Oil Pump And Suction Plate Bolt Set BMW-11412165397</div>
+        <div style="padding: 6px 0; border-bottom: 1px solid var(--border);">BMW Torx-Bolt With Washer (M12X15X40Zns3) BMW-07119908507</div>
+        <div style="padding: 6px 0; border-bottom: 1px solid var(--border);">BMW Hex Bolt (M8X60) BMW-07119905848 x6</div>
+        <div style="padding: 6px 0; border-bottom: 1px solid var(--border);">BMW Engine Oil Pan Bolt BMW-11137559537</div>
+        <div style="padding: 6px 0; border-bottom: 1px solid var(--border);">BMW Turbocharger Coolant Line O-Ring OES-11537590575</div>
+        <div style="padding: 6px 0; border-bottom: 1px solid var(--border);">BMW Engine Coolant Pipe O-Ring BMW-11537584829</div>
+        <div style="padding: 6px 0; border-bottom: 1px solid var(--border);">BMW Turbocharger Oil Return Line O-Ring BMW-11427590577</div>
+        <div style="padding: 6px 0; border-bottom: 1px solid var(--border);">BMW Turbocharger Oil Line O-Ring BMW-11427590576</div>
+        <div style="padding: 6px 0; border-bottom: 1px solid var(--border);">BMW Steering Shaft Bolt BMW-32306778609</div>
+        <div style="padding: 6px 0; border-bottom: 1px solid var(--border);">BMW Connecting Rod Bolt BMW-11247589671 x24</div>
+        <div style="padding: 6px 0;">BMW Engine Oil Level Sensor Gasket ELR-301540</div>
+        </div>
+      </div>
+      <div class="tab-panel" id="tab-ebay">
+        <h4 style="font-weight: 700; margin-bottom: 8px;">eBay — $348.32 CAD (USD $250.59)</h4>
+        <div style="display: flex; flex-direction: column; gap: 6px; font-size: 0.85rem; color: var(--text-muted);">
+          <div style="padding: 6px 0; border-bottom: 1px solid var(--border);">$117.43 — OEM BMW F10 535i Turbo Charge Air Intercooler 17517577115</div>
+          <div style="padding: 6px 0; border-bottom: 1px solid var(--border);">$92.08 — 2pcs Front Engine Mount Motor Kit for BMW 535i N55</div>
+          <div style="padding: 6px 0; border-bottom: 1px solid var(--border);">$20.92 — Engine Turbocharger Coolant Pipe 11537583903</div>
+          <div style="padding: 6px 0;">$20.16 — Engine Turbocharger Coolant Pipe 11537583902</div>
+        </div>
+      </div>
+      <div class="tab-panel" id="tab-amazon">
+        <h4 style="font-weight: 700; margin-bottom: 8px;">Amazon — $98.17 CAD</h4>
+        <div style="display: flex; flex-direction: column; gap: 6px; font-size: 0.85rem; color: var(--text-muted);">
+          <div style="padding: 6px 0; border-bottom: 1px solid var(--border);">$13.21 — MTC Axle Nut (33-41-1-133-785)</div>
+          <div style="padding: 6px 0; border-bottom: 1px solid var(--border);">$49.98 — A-Premium HVAC Heater Control Valve</div>
+          <div style="padding: 6px 0;">$34.98 — A-Premium Turbocharger Oil Return Line</div>
+        </div>
+      </div>
+      <div class="tab-panel" id="tab-alibaba">
+        <h4 style="font-weight: 700; margin-bottom: 8px;">Alibaba — $110.86 CAD (USD $79.90)</h4>
+        <div style="display: flex; flex-direction: column; gap: 6px; font-size: 0.85rem; color: var(--text-muted);">
+          <div style="padding: 6px 0;">$79.90 — Powertec Turbo Cartridge B03 18539700000 MFS Turbo CHRA for BMW X3 35i N55 Engine</div>
+        </div>
+      </div>
+      <div class="tab-panel" id="tab-inperson">
+        <h4 style="font-weight: 700; margin-bottom: 8px;">In-Person Purchases — $485.00 CAD</h4>
+        <div style="display: flex; flex-direction: column; gap: 6px; font-size: 0.85rem; color: var(--text-muted);">
+          <div style="padding: 6px 0; border-bottom: 1px solid var(--border);">2qt CHF11 Power Steering Fluid</div>
+          <div style="padding: 6px 0; border-bottom: 1px solid var(--border);">Supertech Euro 5W-40 Oil (30 liters)</div>
+          <div style="padding: 6px 0; border-bottom: 1px solid var(--border);">OEM Euro Coolant Premix 50/50 (8 liters)</div>
+          <div style="padding: 6px 0; border-bottom: 1px solid var(--border);">Scott Shop Towels, Blue (3 Rolls, 165 Total)</div>
+          <div style="padding: 6px 0;">Multiple cans &mdash; brake cleaner, engine cleaner, Windex, industrial purple grease remover, carburetor cleaner, electrical contact cleaner, PB Blaster</div>
+        </div>
+      </div>
+    </div>
+    <script>
+    (function() {
+      const card = document.getElementById('tabsCard1');
+      const btns = card.querySelectorAll('.tab-btn');
+      const panels = card.querySelectorAll('.tab-panel');
+
+      btns.forEach(btn => {
+        btn.addEventListener('click', () => {
+          btns.forEach(b => b.classList.remove('active'));
+          panels.forEach(p => p.classList.remove('active'));
+          btn.classList.add('active');
+          document.getElementById('tab-' + btn.dataset.tab).classList.add('active');
+        });
+      });
+    })();
+    </script>
+  </section>
+
+  <div class="section-divider"><hr></div>
+
+  <!-- ============================================================
+       SECTION 12: CONCLUSION
+       ============================================================ -->
+  <section class="section" id="conclusion">
+    <p class="section-label">Chapter 12</p>
+    <h2 class="section-title">Conclusion</h2>
+    <div class="blog-prose">
+      <p>I am extremely happy and proud of my work, especially considering I had zero mechanical background and never even touched a car until I was well into my twenties. Little did I know that just four years later I would be rebuilding the engine of a car in my parents' garage. It just goes to show that whenever there is a will, there is always a way. I have proven to myself that I can do anything I set my mind to!</p>
+      <p>I ended up doing a wheel alignment myself later in the year as well. I just eyeballed it because I already had an alignment done a year prior when trying to fix other issues. Since the thrust angle of the rear wheels was already in line, all I needed to do was correct the front end. Note that you cannot eyeball an alignment any other way. One axle has to be already perfectly aligned, otherwise this method will not work. Logically, it has to be this way.</p>
+      <p>If you would like to see my other projects, which include an ENET diagnostic and logging scanner for engine telemetry, check them out here: <a href="index.html#projects">[link]</a>. Otherwise, have a nice day!</p>
+    </div>
+  </section>
+
+  <div class="section-divider"><hr></div>
+
+  <!-- ============================================================
+       SOURCES & RESEARCH
+       ============================================================ -->
+  <section class="section">
+    <p class="section-label">References</p>
+    <h2 class="section-title">Sources &amp; Research</h2>
+    <p style="color: var(--text-muted); line-height: 1.7; margin-bottom: 24px;">
+      Forums, documentation, and parts suppliers used throughout this project.
+    </p>
+
+    <div class="link-shelf">
+
+      <a href="https://www.realoem.com/bmw/enUS/showparts?id=FU73-USA-09-2011-F10-BMW-535iX&diagId=11_6463" target="_blank" rel="noopener" class="link-preview">
+        <div class="link-preview-icon" style="font-size: 1.1rem;">&#x1F4CB;</div>
+        <div class="link-preview-text">
+          <div class="link-preview-site">
+            <span class="link-preview-tag">Parts</span>
+            realoem.com
+          </div>
+          <div class="link-preview-title">RealOEM — BMW F10 535iX Parts Diagrams</div>
+          <div class="link-preview-desc">Dealer-level exploded diagrams with full part numbers. Essential for identifying every bolt, gasket, and component.</div>
+        </div>
+        <div class="link-preview-arrow">
+          <svg viewBox="0 0 24 24"><path d="M10 6L8.59 7.41 13.17 12l-4.58 4.59L10 18l6-6z"/></svg>
+        </div>
+      </a>
+
+      <a href="https://www.fcpeuro.com/" target="_blank" rel="noopener" class="link-preview">
+        <div class="link-preview-icon" style="font-size: 1.3rem;">&#x1F6D2;</div>
+        <div class="link-preview-text">
+          <div class="link-preview-site">
+            <span class="link-preview-tag">Parts</span>
+            fcpeuro.com
+          </div>
+          <div class="link-preview-title">FCP Euro — European Car Parts</div>
+          <div class="link-preview-desc">Lifetime warranty parts supplier. Primary source for OEM bolts, bearings, gaskets, and hardware.</div>
+        </div>
+        <div class="link-preview-arrow">
+          <svg viewBox="0 0 24 24"><path d="M10 6L8.59 7.41 13.17 12l-4.58 4.59L10 18l6-6z"/></svg>
+        </div>
+      </a>
+
+      <a href="https://www.bimmerforums.com/" target="_blank" rel="noopener" class="link-preview">
+        <div class="link-preview-icon">&#x1F3C1;</div>
+        <div class="link-preview-text">
+          <div class="link-preview-site">
+            <span class="link-preview-tag">Forum</span>
+            bimmerforums.com
+          </div>
+          <div class="link-preview-title">Bimmerforums — BMW Community</div>
+          <div class="link-preview-desc">Community forums with technical write-ups, repair experiences, and troubleshooting discussions.</div>
+        </div>
+        <div class="link-preview-arrow">
+          <svg viewBox="0 0 24 24"><path d="M10 6L8.59 7.41 13.17 12l-4.58 4.59L10 18l6-6z"/></svg>
+        </div>
+      </a>
+
+      <a href="https://f10.5post.com/forums/" target="_blank" rel="noopener" class="link-preview">
+        <div class="link-preview-icon">&#x1F3C1;</div>
+        <div class="link-preview-text">
+          <div class="link-preview-site">
+            <span class="link-preview-tag">Forum</span>
+            f10.5post.com
+          </div>
+          <div class="link-preview-title">5Post F10 Forums — BMW 5 Series Community</div>
+          <div class="link-preview-desc">F10-specific community with detailed DIY threads, xDrive discussions, and RWD conversion experiences.</div>
+        </div>
+        <div class="link-preview-arrow">
+          <svg viewBox="0 0 24 24"><path d="M10 6L8.59 7.41 13.17 12l-4.58 4.59L10 18l6-6z"/></svg>
+        </div>
+      </a>
+
+      <a href="https://www.bimmerpost.com/goodiesforyou/N55-Product-Information.pdf" target="_blank" rel="noopener" class="link-preview">
+        <div class="link-preview-icon" style="font-size: 1.1rem;">&#x1F4D8;</div>
+        <div class="link-preview-text">
+          <div class="link-preview-site">
+            <span class="link-preview-tag">Docs</span>
+            bimmerpost.com
+          </div>
+          <div class="link-preview-title">N55 Product Information (PDF)</div>
+          <div class="link-preview-desc">BMW official product information document for the N55B30M0 engine.</div>
+        </div>
+        <div class="link-preview-arrow">
+          <svg viewBox="0 0 24 24"><path d="M10 6L8.59 7.41 13.17 12l-4.58 4.59L10 18l6-6z"/></svg>
+        </div>
+      </a>
+
+      <a href="https://ia600902.us.archive.org/26/items/BMWTechnicalTrainingDocuments/ST916%20N55%20Engine/N55_Engine_web.pdf" target="_blank" rel="noopener" class="link-preview">
+        <div class="link-preview-icon" style="font-size: 1.1rem;">&#x1F4D8;</div>
+        <div class="link-preview-text">
+          <div class="link-preview-site">
+            <span class="link-preview-tag">Docs</span>
+            archive.org
+          </div>
+          <div class="link-preview-title">BMW Technical Training — ST916 N55 Engine</div>
+          <div class="link-preview-desc">BMW technical training document covering the N55 engine architecture and service procedures.</div>
+        </div>
+        <div class="link-preview-arrow">
+          <svg viewBox="0 0 24 24"><path d="M10 6L8.59 7.41 13.17 12l-4.58 4.59L10 18l6-6z"/></svg>
+        </div>
+      </a>
+
+    </div>
+  </section>
+
+  <!-- FOOTER -->
+  <footer>
+    <p>&copy; 2026 Kaiwen Z. | <a href="index.html">Portfolio</a> | <a href="https://github.com/kaiwen-z" target="_blank">GitHub</a></p>
+  </footer>
+
+  <script>
+  (function() {
+    function setComparePct(root, p, track) {
+      track = track || root.querySelector('.image-compare__track');
+      p = Math.max(0, Math.min(100, p));
+      root.dataset.comparePct = String(p);
+      var after = root.querySelector('.image-compare__layer--after');
+      var div = root.querySelector('.image-compare__divider');
+      if (after) after.style.clipPath = 'inset(0 ' + (100 - p) + '% 0 0)';
+      if (div) div.style.left = p + '%';
+      if (track) track.setAttribute('aria-valuenow', String(Math.round(p)));
+    }
+
+    document.querySelectorAll('.image-compare').forEach(function(root) {
+      var track = root.querySelector('.image-compare__track');
+      if (!track) return;
+
+      var dragging = false;
+
+      function pctFromClientX(clientX) {
+        var rect = track.getBoundingClientRect();
+        if (rect.width <= 0) return 50;
+        return ((clientX - rect.left) / rect.width) * 100;
+      }
+
+      function applyClientX(clientX) {
+        setComparePct(root, pctFromClientX(clientX), track);
+      }
+
+      setComparePct(root, 50, track);
+
+      track.addEventListener('mousedown', function(e) {
+        if (e.button !== 0) return;
+        dragging = true;
+        applyClientX(e.clientX);
+        e.preventDefault();
+      });
+
+      window.addEventListener('mousemove', function(e) {
+        if (!dragging) return;
+        applyClientX(e.clientX);
+      });
+
+      window.addEventListener('mouseup', function() {
+        dragging = false;
+      });
+
+      track.addEventListener('touchstart', function(e) {
+        if (e.touches.length !== 1) return;
+        dragging = true;
+        applyClientX(e.touches[0].clientX);
+        e.preventDefault();
+      }, { passive: false });
+
+      window.addEventListener('touchmove', function(e) {
+        if (!dragging || e.touches.length !== 1) return;
+        applyClientX(e.touches[0].clientX);
+        e.preventDefault();
+      }, { passive: false });
+
+      window.addEventListener('touchend', function() {
+        dragging = false;
+      });
+
+      track.addEventListener('keydown', function(e) {
+        var p = parseFloat(root.dataset.comparePct);
+        if (isNaN(p)) p = 50;
+        var step = e.shiftKey ? 10 : 2;
+        if (e.key === 'ArrowLeft' || e.key === 'ArrowDown') {
+          setComparePct(root, p - step, track);
+          e.preventDefault();
+        } else if (e.key === 'ArrowRight' || e.key === 'ArrowUp') {
+          setComparePct(root, p + step, track);
+          e.preventDefault();
+        } else if (e.key === 'Home') {
+          setComparePct(root, 0, track);
+          e.preventDefault();
+        } else if (e.key === 'End') {
+          setComparePct(root, 100, track);
+          e.preventDefault();
+        }
+      });
+    });
+  })();
+  </script>
+
+  <script>
+  (function() {
+    var lb = document.getElementById('slideshowLightbox');
+    var img = document.getElementById('slideshowImg');
+    var cap = document.getElementById('slideshowCaption');
+    var closeBtn = document.getElementById('slideshowCloseBtn');
+    var prevBtn = document.getElementById('slideshowPrevBtn');
+    var nextBtn = document.getElementById('slideshowNextBtn');
+    var sources = [];
+    var index = 0;
+
+    function openFromThumb(galleryEl, thumbBtn) {
+      var thumbs = Array.prototype.slice.call(galleryEl.querySelectorAll('.image-gallery__thumb'));
+      var clicked = thumbBtn.querySelector('img');
+      if (!clicked || !clicked.getAttribute('src')) return;
+
+      sources = [];
+      var compactIndex = -1;
+      thumbs.forEach(function(btn) {
+        var im = btn.querySelector('img');
+        if (!im || !im.getAttribute('src')) return;
+        var c = btn.querySelector('.image-gallery__caption');
+        var caption = c ? c.textContent.trim() : '';
+        sources.push({ src: im.getAttribute('src'), alt: im.getAttribute('alt') || '', caption: caption });
+        if (btn === thumbBtn) compactIndex = sources.length - 1;
+      });
+      if (compactIndex < 0) return;
+      index = compactIndex;
+      show();
+      lb.classList.add('active');
+      document.body.style.overflow = 'hidden';
+    }
+
+    function updateNavState() {
+      var multi = sources.length > 1;
+      prevBtn.disabled = !multi;
+      nextBtn.disabled = !multi;
+    }
+
+    function show() {
+      if (!sources.length) return;
+      var item = sources[index];
+      img.src = item.src;
+      img.alt = item.alt;
+      cap.textContent = item.caption || '';
+      updateNavState();
+    }
+
+    function close() {
+      lb.classList.remove('active');
+      img.src = '';
+      cap.textContent = '';
+      document.body.style.overflow = '';
+      sources = [];
+      updateNavState();
+    }
+
+    function prev() {
+      if (!sources.length) return;
+      index = (index - 1 + sources.length) % sources.length;
+      show();
+    }
+
+    function next() {
+      if (!sources.length) return;
+      index = (index + 1) % sources.length;
+      show();
+    }
+
+    document.addEventListener('click', function(e) {
+      var thumb = e.target.closest('.image-gallery__thumb');
+      if (!thumb) return;
+      var gallery = thumb.closest('.image-gallery');
+      if (!gallery) return;
+      openFromThumb(gallery, thumb);
+    });
+
+    closeBtn.addEventListener('click', close);
+    prevBtn.addEventListener('click', function(e) { e.stopPropagation(); prev(); });
+    nextBtn.addEventListener('click', function(e) { e.stopPropagation(); next(); });
+
+    lb.addEventListener('click', function(e) {
+      if (e.target === lb) close();
+    });
+
+    document.addEventListener('keydown', function(e) {
+      if (!lb.classList.contains('active')) return;
+      if (e.key === 'Escape') close();
+      else if (sources.length > 1 && e.key === 'ArrowLeft') prev();
+      else if (sources.length > 1 && e.key === 'ArrowRight') next();
+    });
+
+    updateNavState();
+  })();
+  </script>
+</body>
+</html>

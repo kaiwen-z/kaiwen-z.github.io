@@ -222,6 +222,7 @@
       border-radius: var(--radius);
       overflow: hidden;
       transition: all 0.3s ease;
+      cursor: pointer;
     }
 
     .project-card:hover {
@@ -335,6 +336,18 @@
       background: var(--accent-hover);
       border-color: var(--accent-hover);
       color: #fff;
+    }
+
+    .project-card:hover .project-link.primary-link {
+      background: var(--accent-hover);
+      border-color: var(--accent-hover);
+      color: #fff;
+    }
+
+    .project-card:hover .project-links:has(.project-link:not(.primary-link):hover) .project-link.primary-link {
+      background: transparent;
+      border-color: var(--border);
+      color: var(--text-muted);
     }
 
     /* --- ABOUT SECTIONS --- */

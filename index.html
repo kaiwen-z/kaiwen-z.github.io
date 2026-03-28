@@ -264,5 +264,24 @@
     <p>&copy; 2026 Kaiwen Z.</p>
   </footer>
 
+  <script>
+    (function () {
+      document.querySelectorAll('#projects .project-card').forEach(function (card) {
+        card.addEventListener('click', function (e) {
+          if (e.target.closest('a')) return;
+          var primary = card.querySelector('a.project-link.primary-link');
+          if (!primary) return;
+          var href = primary.getAttribute('href');
+          if (!href) return;
+          if (primary.getAttribute('target') === '_blank') {
+            window.open(href, '_blank', 'noopener,noreferrer');
+          } else {
+            window.location.href = href;
+          }
+        });
+      });
+    })();
+  </script>
+
 </body>
 </html>

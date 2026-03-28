@@ -16,10 +16,84 @@
   <link href="https://fonts.googleapis.com/css?family=Nunito:200,200i,300,300i,400,400i,600,600i,700,700i,800,800i,900,900i" rel="stylesheet">
   <!-- Custom styles for this template-->
   <link href="sim/sb-admin-2.min.css" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <style>
+    .site-portfolio-nav {
+      --pn-text: #ececef;
+      --pn-text-muted: #b4b4bf;
+      --pn-accent: #6366f1;
+      --pn-border: #2a2a36;
+      position: sticky;
+      top: 0;
+      z-index: 1020;
+      font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+      backdrop-filter: blur(20px);
+      -webkit-backdrop-filter: blur(20px);
+      background: rgba(15, 15, 19, 0.8);
+      border-bottom: 1px solid var(--pn-border);
+    }
+    .site-portfolio-nav-inner {
+      max-width: 960px;
+      margin: 0 auto;
+      padding: 0 24px;
+      height: 64px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+    }
+    .site-portfolio-nav-logo {
+      font-weight: 700;
+      font-size: 1.1rem;
+      color: var(--pn-text);
+      letter-spacing: -0.02em;
+      text-decoration: none;
+    }
+    .site-portfolio-nav-logo:hover { color: var(--pn-text); text-decoration: none; }
+    .site-portfolio-nav-links { display: flex; gap: 28px; flex-wrap: wrap; }
+    .site-portfolio-nav-links a {
+      color: var(--pn-text-muted);
+      font-size: 0.9rem;
+      font-weight: 500;
+      position: relative;
+      padding: 4px 0;
+      text-decoration: none;
+    }
+    .site-portfolio-nav-links a::after {
+      content: '';
+      position: absolute;
+      bottom: -2px;
+      left: 0;
+      width: 0;
+      height: 2px;
+      background: var(--pn-accent);
+      border-radius: 1px;
+      transition: width 0.25s ease;
+    }
+    .site-portfolio-nav-links a:hover { color: var(--pn-text); text-decoration: none; }
+    .site-portfolio-nav-links a:hover::after { width: 100%; }
+    #addModal .modal-body img {
+      max-height: 48px;
+      width: auto;
+      vertical-align: middle;
+      margin-left: 0.5rem;
+    }
+  </style>
 
 </head>
 
 <body id="page-top">
+
+  <div class="site-portfolio-nav" role="navigation" aria-label="Site">
+    <div class="site-portfolio-nav-inner">
+      <a href="index.html" class="site-portfolio-nav-logo">Github.io Pages</a>
+      <div class="site-portfolio-nav-links">
+        <a href="index.html">Home</a>
+        <a href="index.html#about">About</a>
+        <a href="index.html#projects">Projects</a>
+        <a href="https://github.com/kaiwen-z" target="_blank" rel="noopener">GitHub</a>
+      </div>
+    </div>
+  </div>
 
   <!-- Page Wrapper -->
   <div id="wrapper">
@@ -233,6 +307,7 @@
   <!-- <script src="/socket.io/socket.io.js"></script> -->
   <!-- <script src="api.js"></script> -->
   <!-- <script type="module" src="index.js"></script> -->
+  <!-- ES modules require http(s). From the repo folder: npx --yes serve -p 3000 then open http://localhost:3000/canvas.html -->
   <script type="module" src="sim/canvas.js"></script>
 </body>
 

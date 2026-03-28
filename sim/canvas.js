@@ -1,10 +1,12 @@
 import {Simulator} from "./simulator.js";
 import {CONNECTOR,GATE,PORT,TOOL} from "./Enumeration.js";
 
-$(document).ready(function(){
+function initCircuitSim() {
     let mouseDx, mouseDy;
-    let currX, currY;
-    let prevX, prevY;
+    let currX = 0;
+    let currY = 0;
+    let prevX = 0;
+    let prevY = 0;
     var speed = 10;
 
     let canvas = document.querySelector('canvas');
@@ -13,14 +15,19 @@ $(document).ready(function(){
     let canvasWidth = canvas.width;
     let canvasHeight = canvas.height;
 
-    let scaleX = canvasWidth / canvas.getBoundingClientRect().width;
-    let scaleY = canvasHeight / canvas.getBoundingClientRect().height;
+    let scaleX = canvasWidth / Math.max(canvas.getBoundingClientRect().width, 1);
+    let scaleY = canvasHeight / Math.max(canvas.getBoundingClientRect().height, 1);
 
     let offsetX = canvas.offsetLeft;
     let offsetY = canvas.offsetTop;
 
-    document.getElementById('INPUT').setAttribute("height", "50px");
-    document.getElementById('OUTPUT').setAttribute("height", "50px");
+    ['INPUT', 'OUTPUT'].forEach(function (id) {
+        var el = document.getElementById(id);
+        if (el) {
+            el.setAttribute('height', '50');
+            el.setAttribute('width', '50');
+        }
+    });
 
     let images = [];
     images.push(document.getElementById("NOT-GATE"));
@@ -35,16 +42,25 @@ $(document).ready(function(){
     let sim = new Simulator(c,images);
 
     function resize(){
-        let w = window.innerWidth;
-        let h = window.innerHeight;
-        resizeCanvas(w,h);
+        resizeCanvas();
     }
 
-    function resizeCanvas(w, h){
-        c.canvas.width = w - 70;
-        c.canvas.height = h - 293;
-        scaleX = canvas.width / canvas.getBoundingClientRect().width;
-        scaleY = canvas.height / canvas.getBoundingClientRect().height;
+    function resizeCanvas(){
+        var wrap = document.getElementById('myCanvas');
+        if (!wrap) {
+            return;
+        }
+        var rect = wrap.getBoundingClientRect();
+        var bottomPad = 20;
+        var rawH = Math.floor(window.innerHeight - rect.top - bottomPad);
+        var height = Math.max(240, Math.min(rawH, 4000));
+        var width = Math.max(200, Math.floor(rect.width) || window.innerWidth - 80);
+        c.canvas.width = width;
+        c.canvas.height = height;
+        var rw = canvas.getBoundingClientRect().width;
+        var rh = canvas.getBoundingClientRect().height;
+        scaleX = rw > 0 ? canvas.width / rw : 1;
+        scaleY = rh > 0 ? canvas.height / rh : 1;
         offsetX = canvas.offsetLeft;
         offsetY = canvas.offsetTop;
     }
@@ -55,27 +71,27 @@ $(document).ready(function(){
         var canvasX = 0;
         var canvasY = 0;
         var currentElement = canvas;
-    
+
         do{
             totalOffsetX += currentElement.offsetLeft - currentElement.scrollLeft;
             totalOffsetY += currentElement.offsetTop - currentElement.scrollTop;
         }
         while(currentElement = currentElement.offsetParent)
-    
-        canvasX = event.pageX - totalOffsetX;
-        canvasY = event.pageY - totalOffsetY;
-        
+
+        canvasX = e.pageX - totalOffsetX;
+        canvasY = e.pageY - totalOffsetY;
+
         prevX = currX;
         prevY = currY;
         currX = canvasX;
         currY = canvasY;
-        
+
         mouseDx = currX - prevX;
         mouseDy = currY - prevY;
     }
 
     function handleMouseDown(e) {
-        updateMousePos(e)
+        updateMousePos(e);
         $("#downlog").html("Down: " + currX + " / " + currY);
         sim.handleMouseDown(currX, currY, mouseDx, mouseDy);
     }
@@ -118,6 +134,9 @@ $(document).ready(function(){
         resize();
     });
     resize();
+    requestAnimationFrame(function () {
+        requestAnimationFrame(resize);
+    });
     timeout();
     function timeout() {
         setTimeout(function () {
@@ -229,5 +248,10 @@ $(document).ready(function(){
         elmt.innerHTML = html;
     });
 
-});
+}
 
+if (document.readyState === 'complete') {
+    initCircuitSim();
+} else {
+    window.addEventListener('load', initCircuitSim);
+}

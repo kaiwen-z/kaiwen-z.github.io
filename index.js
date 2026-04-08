@@ -543,15 +543,15 @@
           var effectiveRatio = Math.min(1, ratio * 0.943);
           if (burstClusterRemaining > 0) {
             // Cluster spacing: quick but still random.
-            var cmin = 95;
-            var cmax = 240;
+            var cmin = 114;
+            var cmax = 288;
             nextRandomRayAt = now + cmin + Math.random() * (cmax - cmin);
             burstClusterRemaining -= 1;
             return;
           }
 
-          var minDelay = 1100 + (1 - effectiveRatio) * 4600;
-          var maxDelay = 3200 + (1 - effectiveRatio) * 11000;
+          var minDelay = 1320 + (1 - effectiveRatio) * 5520;
+          var maxDelay = 3840 + (1 - effectiveRatio) * 13200;
           nextRandomRayAt = now + minDelay + Math.random() * (maxDelay - minDelay);
 
           // Slight clustering: occasionally schedule a short follow-up run.
@@ -799,14 +799,14 @@
             // Pure white aura with a white-hot core.
             var glowAlphaSeg = Math.min(1, glowA * bMul);
             ctx.strokeStyle = 'rgba(255, 255, 255,' + glowAlphaSeg.toFixed(3) + ')';
-            ctx.lineWidth = Math.max(0.0605, w0 * 0.2178 * wMul);
+            ctx.lineWidth = Math.max(0.09075, w0 * 0.3267 * wMul);
             ctx.beginPath();
             ctx.moveTo(p0.x + offx, p0.y + offy);
             ctx.lineTo(p1.x + offx, p1.y + offy);
             ctx.stroke();
             if (bMul > 1.05) {
               ctx.strokeStyle = 'rgba(255, 255, 255,' + Math.min(1, glowAlphaSeg * 0.35).toFixed(3) + ')';
-              ctx.lineWidth = Math.max(0.0363, w0 * 0.0968 * wMul);
+              ctx.lineWidth = Math.max(0.05445, w0 * 0.1452 * wMul);
               ctx.beginPath();
               ctx.moveTo(p0.x + offx, p0.y + offy);
               ctx.lineTo(p1.x + offx, p1.y + offy);
@@ -832,7 +832,7 @@
             var edgeDark2 = 0.26 + 0.74 * Math.sin(Math.PI * tMid2);
             var bMul2 = (fx.bStart * (1 - tMid2) + fx.bEnd * tMid2 + fx.bMid * bell2) * depthPulse2 * edgeDark2 * (0.92 + intensityBias * 0.18) * upperFade2;
             ctx.strokeStyle = 'rgba(255, 255, 255,' + Math.min(1, coreA * bMul2).toFixed(3) + ')';
-            ctx.lineWidth = Math.max(0.04235, w0 * 0.1573 * wMul2);
+            ctx.lineWidth = Math.max(0.063525, w0 * 0.23595 * wMul2);
             ctx.beginPath();
             ctx.moveTo(q0.x + offx, q0.y + offy);
             ctx.lineTo(q1.x + offx, q1.y + offy);

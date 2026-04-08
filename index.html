@@ -6,6 +6,160 @@
   <title>Kevin Zhu (KaiwenZ) — Projects</title>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="styles.css">
+  <style>
+    /* View Projects: pulse + press + particle "explosion" (respects reduced motion) */
+    .btn.btn-view-projects {
+      position: relative;
+      overflow: visible;
+      transform: translateZ(0);
+      will-change: transform, filter;
+      isolation: isolate;
+    }
+
+    .btn.btn-view-projects::before {
+      content: "";
+      position: absolute;
+      inset: -2px;
+      border-radius: inherit;
+      background: radial-gradient(120px 60px at 30% 20%, rgba(255, 255, 255, 0.35), transparent 60%),
+        radial-gradient(140px 80px at 80% 70%, rgba(120, 220, 255, 0.25), transparent 65%);
+      opacity: 0;
+      pointer-events: none;
+      z-index: -1;
+      filter: blur(0.5px);
+      transition: opacity 220ms ease;
+    }
+
+    .btn.btn-view-projects.is-pulsing {
+      animation: btnPulse 1.8s ease-in-out infinite;
+    }
+
+    .btn.btn-view-projects.is-pulsing::before {
+      opacity: 1;
+    }
+
+    .btn.btn-view-projects.is-pressing {
+      animation: btnPress 420ms cubic-bezier(.2,.9,.2,1) 1;
+    }
+
+    .btn.btn-view-projects.is-pressing::before {
+      opacity: 1;
+    }
+
+    .btn.btn-view-projects:focus-visible {
+      outline: 2px solid rgba(120, 220, 255, 0.65);
+      outline-offset: 3px;
+    }
+
+    @keyframes btnPulse {
+      0%, 100% {
+        transform: translateY(0) scale(1);
+        filter: drop-shadow(0 0 0 rgba(120, 220, 255, 0));
+      }
+      50% {
+        transform: translateY(-1px) scale(1.02);
+        filter: drop-shadow(0 10px 22px rgba(120, 220, 255, 0.22));
+      }
+    }
+
+    @keyframes btnPress {
+      0% { transform: translateY(0) scale(1); }
+      20% { transform: translateY(2px) scale(0.98); }
+      55% { transform: translateY(-2px) scale(1.03); }
+      100% { transform: translateY(0) scale(1); }
+    }
+
+    .btn-explosion-layer {
+      position: absolute;
+      inset: 0;
+      overflow: visible;
+      pointer-events: none;
+      z-index: 10;
+    }
+
+    .btn-explosion-particle {
+      position: absolute;
+      width: 10px;
+      height: 10px;
+      border-radius: 999px;
+      background: var(--pcolor, rgba(120, 220, 255, 0.9));
+      transform: translate(-50%, -50%);
+      opacity: 0;
+      filter: blur(0px);
+      /* Ease-out = slows down as it gets farther */
+      animation: particleFly var(--dur, 220ms) cubic-bezier(.05,.9,.2,1) forwards;
+      box-shadow:
+        0 0 0 1px rgba(255,255,255,0.14),
+        0 0 18px rgba(120,220,255,0.22),
+        0 12px 22px rgba(0,0,0,0.22);
+      mix-blend-mode: normal;
+    }
+
+    /* "Laser beam" variant */
+    .btn-explosion-particle.is-beam {
+      width: var(--w, 3px);
+      height: var(--h, 120px);
+      border-radius: 999px;
+      background:
+        linear-gradient(
+          180deg,
+          rgba(255, 255, 255, 0.85) 0%,
+          rgba(255, 210, 120, 0.95) 15%,
+          rgba(255, 140, 0, 0.95) 55%,
+          rgba(60, 30, 10, 0.0) 100%
+        );
+      transform: translate(-50%, -50%) rotate(var(--rot, 0deg));
+      filter: blur(0.2px) drop-shadow(0 0 10px rgba(255, 140, 0, 0.55));
+      box-shadow: none;
+      animation-name: beamFly;
+      animation-duration: var(--dur, 160ms);
+      /* Ease-out so beams decelerate */
+      animation-timing-function: cubic-bezier(.05,.9,.2,1);
+      mix-blend-mode: screen;
+    }
+
+    /* Smoke / ember bloom variant */
+    .btn-explosion-particle.is-smoke {
+      width: var(--sz, 26px);
+      height: var(--sz, 26px);
+      border-radius: 999px;
+      background: radial-gradient(circle at 35% 35%,
+        rgba(255, 210, 140, 0.55),
+        rgba(255, 140, 0, 0.25) 45%,
+        rgba(25, 20, 18, 0.0) 75%
+      );
+      filter: blur(1.4px);
+      box-shadow: 0 0 22px rgba(255, 140, 0, 0.18);
+      animation-duration: var(--dur, 520ms);
+      /* Smoke should drift and slow */
+      animation-timing-function: cubic-bezier(.05,.85,.2,1);
+    }
+
+    @keyframes particleFly {
+      0%   { opacity: 0; transform: translate(-50%, -50%) scale(0.6); }
+      12%  { opacity: 1; }
+      82%  { opacity: 1; }
+      100% { opacity: 0; transform: translate(calc(-50% + var(--dx, 0px)), calc(-50% + var(--dy, 0px))) scale(var(--s, 1)); }
+    }
+
+    @keyframes beamFly {
+      0%   { opacity: 0; transform: translate(-50%, -50%) rotate(var(--rot, 0deg)) scaleY(0.6); }
+      10%  { opacity: 1; }
+      78%  { opacity: 1; }
+      100% { opacity: 0; transform: translate(calc(-50% + var(--dx, 0px)), calc(-50% + var(--dy, 0px))) rotate(var(--rot, 0deg)) scaleY(1.05); }
+    }
+
+    @media (prefers-reduced-motion: reduce) {
+      .btn.btn-view-projects.is-pulsing,
+      .btn.btn-view-projects.is-pressing,
+      .btn-explosion-particle {
+        animation: none !important;
+      }
+      .btn.btn-view-projects::before {
+        transition: none !important;
+      }
+    }
+  </style>
 </head>
 <body class="portfolio-page">
 
@@ -28,7 +182,7 @@
       <br>
     </p>
     <div class="hero-links">
-      <a href="#projects" class="btn btn-primary" onclick="event.preventDefault();document.getElementById('projects').scrollIntoView({behavior:'smooth',block:'start'})">
+      <a id="view-projects-btn" href="#projects" class="btn btn-primary btn-view-projects" onclick="event.preventDefault();document.getElementById('projects').scrollIntoView({behavior:'smooth',block:'start'})">
         <svg viewBox="0 0 16 16" xmlns="http://www.w3.org/2000/svg"><path d="M8 4a.75.75 0 01.75.75v5.69l2.22-2.22a.75.75 0 111.06 1.06l-3.5 3.5a.75.75 0 01-1.06 0l-3.5-3.5a.75.75 0 111.06-1.06l2.22 2.22V4.75A.75.75 0 018 4z"/></svg>
         View Projects
       </a>
@@ -279,6 +433,193 @@
             window.location.href = href;
           }
         });
+      });
+    })();
+  </script>
+
+  <script>
+    (function () {
+      function prefersReducedMotion() {
+        return window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+      }
+
+      function resetToTopAndDisableRestore() {
+        try {
+          if ('scrollRestoration' in history) history.scrollRestoration = 'manual';
+        } catch (e) {}
+
+        // If the URL has an anchor (e.g. #projects), clear it so reload doesn't auto-jump.
+        try {
+          if (window.location.hash) {
+            history.replaceState(null, '', window.location.pathname + window.location.search);
+          }
+        } catch (e) {}
+
+        // Do the actual reset after the browser has had a chance to restore.
+        window.setTimeout(function () {
+          window.scrollTo(0, 0);
+        }, 0);
+      }
+
+      function ensureExplosionLayer(btn) {
+        var existing = btn.querySelector('.btn-explosion-layer');
+        if (existing) return existing;
+        var layer = document.createElement('span');
+        layer.className = 'btn-explosion-layer';
+        btn.appendChild(layer);
+        return layer;
+      }
+
+      function explode(btn) {
+        if (prefersReducedMotion()) return;
+        var layer = ensureExplosionLayer(btn);
+
+        // Make it fill the whole screen: travel based on viewport.
+        var vw = Math.max(document.documentElement.clientWidth || 0, window.innerWidth || 0);
+        var vh = Math.max(document.documentElement.clientHeight || 0, window.innerHeight || 0);
+        var maxR = Math.sqrt(vw * vw + vh * vh) * 0.95; // enough to fly off-screen
+
+        // Laser beams (fast traveling particles from button center)
+        var beamCount = 104;
+        for (var i = 0; i < beamCount; i++) {
+          var beam = document.createElement('span');
+          beam.className = 'btn-explosion-particle is-beam';
+          beam.style.left = '50%';
+          beam.style.top = '50%';
+
+          var a = (Math.PI * 2 * i) / beamCount + (Math.random() - 0.5) * 0.25;
+          var dist = maxR * (0.82 + Math.random() * 0.22);
+          var dxB = Math.cos(a) * dist;
+          var dyB = Math.sin(a) * dist;
+
+          var rot = (a * 180) / Math.PI + 90;
+          var h = 90 + Math.random() * 190;
+          var w = 2 + Math.random() * 3.5;
+          var dur = (140 + Math.random() * 180) * 2; // 50% speed (double duration)
+
+          beam.style.setProperty('--dx', dxB.toFixed(1) + 'px');
+          beam.style.setProperty('--dy', dyB.toFixed(1) + 'px');
+          beam.style.setProperty('--rot', rot.toFixed(1) + 'deg');
+          beam.style.setProperty('--h', h.toFixed(0) + 'px');
+          beam.style.setProperty('--w', w.toFixed(1) + 'px');
+          beam.style.setProperty('--dur', dur.toFixed(0) + 'ms');
+
+          layer.appendChild(beam);
+
+          (function (node) {
+            window.setTimeout(function () {
+              if (node && node.parentNode) node.parentNode.removeChild(node);
+            }, 650);
+          })(beam);
+        }
+
+        // Flame embers + smoke blooms (slightly slower, adds punch)
+        var emberCount = 72;
+        for (var j = 0; j < emberCount; j++) {
+          var ember = document.createElement('span');
+          ember.className = 'btn-explosion-particle';
+          ember.style.left = '50%';
+          ember.style.top = '50%';
+          ember.style.background = 'rgba(255, 140, 0, 0.95)';
+          ember.style.boxShadow = '0 0 18px rgba(255, 140, 0, 0.35), 0 0 2px rgba(255,255,255,0.25)';
+
+          var a2 = Math.random() * Math.PI * 2;
+          var dist2 = maxR * (0.35 + Math.random() * 0.35);
+          var dxE = Math.cos(a2) * dist2;
+          var dyE = Math.sin(a2) * dist2;
+          var s2 = 0.6 + Math.random() * 1.1;
+          var dur2 = (160 + Math.random() * 180) * 2; // 50% speed
+
+          ember.style.setProperty('--dx', dxE.toFixed(1) + 'px');
+          ember.style.setProperty('--dy', dyE.toFixed(1) + 'px');
+          ember.style.setProperty('--s', s2.toFixed(2));
+          ember.style.setProperty('--dur', dur2.toFixed(0) + 'ms');
+
+          layer.appendChild(ember);
+
+          (function (node) {
+            window.setTimeout(function () {
+              if (node && node.parentNode) node.parentNode.removeChild(node);
+            }, 520);
+          })(ember);
+        }
+
+        var smokeCount = 40;
+        for (var k = 0; k < smokeCount; k++) {
+          var smoke = document.createElement('span');
+          smoke.className = 'btn-explosion-particle is-smoke';
+          smoke.style.left = '50%';
+          smoke.style.top = '50%';
+
+          var a3 = Math.random() * Math.PI * 2;
+          var dist3 = maxR * (0.18 + Math.random() * 0.22);
+          var dxS = Math.cos(a3) * dist3;
+          var dyS = Math.sin(a3) * dist3;
+          var sz = 22 + Math.random() * 28;
+          var dur3 = (360 + Math.random() * 260) * 2; // 50% speed
+
+          smoke.style.setProperty('--dx', dxS.toFixed(1) + 'px');
+          smoke.style.setProperty('--dy', dyS.toFixed(1) + 'px');
+          smoke.style.setProperty('--sz', sz.toFixed(0) + 'px');
+          smoke.style.setProperty('--dur', dur3.toFixed(0) + 'ms');
+          smoke.style.setProperty('--s', (0.9 + Math.random() * 0.7).toFixed(2));
+
+          layer.appendChild(smoke);
+
+          (function (node) {
+            window.setTimeout(function () {
+              if (node && node.parentNode) node.parentNode.removeChild(node);
+            }, 900);
+          })(smoke);
+        }
+      }
+
+      function press(btn) {
+        btn.classList.remove('is-pressing');
+        // Force reflow so the animation restarts reliably
+        void btn.offsetWidth;
+        btn.classList.add('is-pressing');
+        explode(btn);
+        window.setTimeout(function () {
+          btn.classList.remove('is-pressing');
+        }, 500);
+      }
+
+      function safeScrollToProjects() {
+        var projects = document.getElementById('projects');
+        if (!projects) return;
+        projects.scrollIntoView({ behavior: prefersReducedMotion() ? 'auto' : 'smooth', block: 'start' });
+      }
+
+      window.addEventListener('DOMContentLoaded', function () {
+        var btn = document.getElementById('view-projects-btn');
+        if (!btn) return;
+
+        resetToTopAndDisableRestore();
+
+        if (!prefersReducedMotion()) btn.classList.add('is-pulsing');
+
+        var autoRan = false;
+
+        // Add explosion on real user clicks too
+        btn.addEventListener('pointerdown', function () {
+          autoRan = true; // user interacted; don't auto-trigger again
+          press(btn);
+        }, { passive: true });
+
+        // Auto explosion at 3s, then scroll at 3.5s
+        window.setTimeout(function () {
+          if (!autoRan) press(btn);
+        }, 3000);
+
+        window.setTimeout(function () {
+          safeScrollToProjects();
+        }, 3500);
+      });
+
+      // Handle bfcache reloads restoring scroll position
+      window.addEventListener('pageshow', function () {
+        resetToTopAndDisableRestore();
       });
     })();
   </script>

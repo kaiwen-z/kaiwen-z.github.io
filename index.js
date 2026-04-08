@@ -179,7 +179,6 @@
       }
 
       function safeScrollToProjects() {
-        if (window.__fxEnabled === false) return;
         var projects = document.getElementById('projects');
         if (!projects) return;
         projects.scrollIntoView({ behavior: prefersReducedMotion() ? 'auto' : 'smooth', block: 'start' });
@@ -230,6 +229,12 @@
     })();
 
 (function () {
+      var hardwareLowPower = (navigator.hardwareConcurrency || 4) <= 4 || (navigator.deviceMemory || 4) <= 4;
+      window.__autoFrameLowPower = window.__autoFrameLowPower || false;
+      window.__isLowPowerMode = function () {
+        return hardwareLowPower || window.__autoFrameLowPower;
+      };
+
       function setFxEnabled(enabled) {
         window.__fxEnabled = !!enabled;
         document.body.classList.toggle('fx-off', !window.__fxEnabled);
@@ -246,10 +251,11 @@
 
       window.addEventListener('DOMContentLoaded', function () {
         var btn = document.getElementById('fx-toggle');
-        if (!btn) return;
-        btn.addEventListener('click', function () {
-          setFxEnabled(!(btn.getAttribute('aria-pressed') === 'true'));
-        });
+        if (btn) {
+          btn.addEventListener('click', function () {
+            setFxEnabled(!(btn.getAttribute('aria-pressed') === 'true'));
+          });
+        }
       });
     })();
 
@@ -403,6 +409,9 @@
         var stars = [];
         var w = 0;
         var h = 0;
+        function isLowPowerDevice() {
+          return window.__isLowPowerMode ? window.__isLowPowerMode() : false;
+        }
         var dpr = Math.min(1.5, window.devicePixelRatio || 1);
         var lastScrollY = window.scrollY || 0;
         var parX = 0;
@@ -418,8 +427,12 @@
         var burstClusterRemaining = 0;
         var simStartAt = (performance.now ? performance.now() : Date.now());
         var consumeAllMs = 5 * 60 * 1000; // ~5 minutes until everything is consumed
-        var targetFrameMs = 1000 / 45;
+        var targetFrameMs = isLowPowerDevice() ? (1000 / 30) : (1000 / 45);
         var lastFrameAt = 0;
+        var framePerfQ = 1;
+        var lastLowPowerState = isLowPowerDevice();
+        var autoLowPowerEnteredAt = 0;
+        var autoExitCooldownMs = 2500;
 
         function clamp01(x) { return x < 0 ? 0 : x > 1 ? 1 : x; }
         function smoothstep(a, b, x) {
@@ -441,14 +454,16 @@
         function resize() {
           w = window.innerWidth;
           h = window.innerHeight;
+          dpr = Math.min(isLowPowerDevice() ? 1.1 : 1.5, window.devicePixelRatio || 1);
+          targetFrameMs = isLowPowerDevice() ? (1000 / 30) : (1000 / 45);
           canvas.width = Math.floor(w * dpr);
           canvas.height = Math.floor(h * dpr);
           canvas.style.width = w + 'px';
           canvas.style.height = h + 'px';
           ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
 
-          var perfMul = (navigator.hardwareConcurrency && navigator.hardwareConcurrency <= 4) ? 0.85 : 1;
-          var count = Math.max(48, Math.floor(((w * h) / 19000) * 1.3 * perfMul));
+          var perfMul = isLowPowerDevice() ? 0.85 : 1;
+          var count = Math.max(isLowPowerDevice() ? 36 : 48, Math.floor(((w * h) / 19000) * 1.3 * perfMul));
           initialStarCount = count;
           stars = new Array(count).fill(0).map(function () {
             // Speed distribution: current speed ~= average.
@@ -830,14 +845,15 @@
           if (bh.s <= 0.001) return;
 
           var s = bh.s;
+          var lp = isLowPowerDevice();
           var q = Math.max(0.62, Math.min(1, typeof perfQ === 'number' ? perfQ : 1));
           var eventHorizonR = bh.horizonR * 2.2;
           var tilt = (-Math.PI / 4) + bh.rot; // right side up 45deg
           var diskA = eventHorizonR * 1.30;
           var diskB = eventHorizonR * 0.19;
-          var drawFringe = q > 0.82 && s > 0.12;
-          var drawLegacyBackGlow = q > 0.72 && s > 0.08;
-          var drawOuterHorizonHalo = q > 0.80 && s > 0.10;
+          var drawFringe = !lp && q > 0.82 && s > 0.12;
+          var drawLegacyBackGlow = !lp && q > 0.72 && s > 0.08;
+          var drawOuterHorizonHalo = !lp && q > 0.80 && s > 0.10;
 
           function drawDiskHalf(isForeground) {
             var startAngle = isForeground ? Math.PI : 0;
@@ -851,8 +867,8 @@
             ctx.globalCompositeOperation = isForeground ? 'source-over' : 'screen';
             ctx.globalAlpha = isForeground ? Math.min(1, 0.92 + 0.08 * s) : Math.min(1, 0.72 + 0.22 * s);
             ctx.strokeStyle = isForeground ? 'rgba(255, 142, 74, 0.98)' : 'rgba(244, 118, 72, 0.94)';
-            ctx.lineWidth = Math.max(6.0, eventHorizonR * 0.26);
-            ctx.shadowBlur = ((isForeground ? (180 + 420 * s) : (240 + 560 * s)) * depthMul) * q;
+            ctx.lineWidth = Math.max(lp ? 4.0 : 6.0, eventHorizonR * (lp ? 0.18 : 0.26));
+            ctx.shadowBlur = ((isForeground ? (180 + 420 * s) : (240 + 560 * s)) * depthMul) * q * (lp ? 0.45 : 1);
             ctx.shadowColor = isForeground ? 'rgba(255, 62, 12, 1)' : 'rgba(226, 58, 18, 0.98)';
             ctx.stroke();
 
@@ -861,8 +877,8 @@
             ctx.ellipse(0, 0, diskA * 0.992, diskB * 0.92, tilt, startAngle, endAngle);
             ctx.globalAlpha = isForeground ? Math.min(1, 0.82 + 0.14 * s) : Math.min(1, 0.62 + 0.22 * s);
             ctx.strokeStyle = isForeground ? 'rgba(255, 106, 42, 0.96)' : 'rgba(230, 86, 46, 0.92)';
-            ctx.lineWidth = Math.max(5.0, eventHorizonR * 0.20);
-            ctx.shadowBlur = ((isForeground ? (120 + 300 * s) : (170 + 420 * s)) * depthMul) * q;
+            ctx.lineWidth = Math.max(lp ? 2.6 : 5.0, eventHorizonR * (lp ? 0.10 : 0.20));
+            ctx.shadowBlur = ((isForeground ? (120 + 300 * s) : (170 + 420 * s)) * depthMul) * q * (lp ? 0.40 : 1);
             ctx.shadowColor = isForeground ? 'rgba(255, 76, 18, 0.98)' : 'rgba(160, 56, 136, 0.90)';
             ctx.stroke();
 
@@ -871,8 +887,8 @@
             ctx.ellipse(0, 0, diskA * 0.985, diskB * 0.88, tilt, startAngle, endAngle);
             ctx.globalAlpha = 1;
             ctx.strokeStyle = 'rgba(255, 255, 246, 1)';
-            ctx.lineWidth = Math.max(3.8, eventHorizonR * 0.18);
-            ctx.shadowBlur = ((isForeground ? (180 + 420 * s) : (220 + 520 * s)) * depthMul) * q;
+            ctx.lineWidth = Math.max(lp ? 2.0 : 3.8, eventHorizonR * (lp ? 0.09 : 0.18));
+            ctx.shadowBlur = ((isForeground ? (180 + 420 * s) : (220 + 520 * s)) * depthMul) * q * (lp ? 0.35 : 1);
             ctx.shadowColor = 'rgba(255, 200, 120, 1)';
             ctx.stroke();
 
@@ -893,8 +909,8 @@
             ctx.ellipse(0, 0, diskA * 0.978, diskB * 0.82, tilt, startAngle, endAngle);
             ctx.globalAlpha = Math.min(1, 0.92 + 0.08 * s);
             ctx.strokeStyle = 'rgba(255, 255, 255, 1)';
-            ctx.lineWidth = Math.max(1.8, eventHorizonR * 0.08);
-            ctx.shadowBlur = ((isForeground ? (140 + 340 * s) : (170 + 420 * s)) * depthMul) * q;
+            ctx.lineWidth = Math.max(lp ? 1.0 : 1.8, eventHorizonR * (lp ? 0.05 : 0.08));
+            ctx.shadowBlur = ((isForeground ? (140 + 340 * s) : (170 + 420 * s)) * depthMul) * q * (lp ? 0.30 : 1);
             ctx.shadowColor = 'rgba(255, 225, 170, 1)';
             ctx.stroke();
             ctx.shadowBlur = 0;
@@ -938,20 +954,20 @@
 
           // Core white-hot edge.
           ctx.globalAlpha = Math.min(1, 0.92 + 0.08 * s);
-          ctx.shadowBlur = (150 + 360 * s) * q;
+          ctx.shadowBlur = (150 + 360 * s) * q * (lp ? 0.42 : 1);
           ctx.shadowColor = 'rgba(255, 170, 86, 1)';
           ctx.strokeStyle = 'rgba(255, 255, 250, 1)';
-          ctx.lineWidth = Math.max(3.4, eventHorizonR * 0.16);
+          ctx.lineWidth = Math.max(lp ? 2.0 : 3.4, eventHorizonR * (lp ? 0.09 : 0.16));
           ctx.beginPath();
           ctx.arc(0, 0, eventHorizonR * 1.004, 0, Math.PI * 2);
           ctx.stroke();
 
           // Mid orange/red plasma band.
           ctx.globalAlpha = Math.min(1, 0.78 + 0.16 * s);
-          ctx.shadowBlur = (230 + 560 * s) * q;
+          ctx.shadowBlur = (230 + 560 * s) * q * (lp ? 0.36 : 1);
           ctx.shadowColor = 'rgba(255, 82, 22, 1)';
           ctx.strokeStyle = 'rgba(255, 122, 42, 0.98)';
-          ctx.lineWidth = Math.max(5.0, eventHorizonR * 0.24);
+          ctx.lineWidth = Math.max(lp ? 2.8 : 5.0, eventHorizonR * (lp ? 0.12 : 0.24));
           ctx.beginPath();
           ctx.arc(0, 0, eventHorizonR * 1.018, 0, Math.PI * 2);
           ctx.stroke();
@@ -1042,6 +1058,25 @@
           var frameBudgetMs = lastFrameAt ? Math.max(0, now - lastFrameAt) : targetFrameMs;
           lastFrameAt = now;
 
+          var shouldUseLowPowerNow = frameBudgetMs > 22.22; // below ~45 FPS
+          if (!window.__autoFrameLowPower && shouldUseLowPowerNow) {
+            window.__autoFrameLowPower = true;
+            autoLowPowerEnteredAt = now;
+          } else if (window.__autoFrameLowPower && !shouldUseLowPowerNow) {
+            if ((now - autoLowPowerEnteredAt) >= autoExitCooldownMs) {
+              window.__autoFrameLowPower = false;
+              autoLowPowerEnteredAt = 0;
+            }
+          }
+
+          var currentLowPowerState = isLowPowerDevice();
+          if (currentLowPowerState !== lastLowPowerState) {
+            lastLowPowerState = currentLowPowerState;
+            resize();
+            frameBudgetMs = targetFrameMs;
+            lastFrameAt = now;
+          }
+
           if (window.__fxEnabled === false) {
             window.requestAnimationFrame(tick);
             return;
@@ -1067,6 +1102,7 @@
           var bh = getBlackHole(now);
           var slow = frameBudgetMs > 22 ? 1 : 0;
           var perfQ = slow ? 0.74 : 1;
+          framePerfQ = perfQ;
 
           // Background fade-to-black near the end (in-canvas, behind everything).
           var fade = smoothstep(0.70, 1.0, scrollProgress);
@@ -1086,6 +1122,7 @@
 
           if (!reducedMotion) maybeSpawnRandomRay(bh, now);
 
+          var starDrawStride = (isLowPowerDevice() || perfQ < 0.82) ? 2 : 1;
           for (var i = 0; i < stars.length; i++) {
             var s = stars[i];
             if (s.dead) continue;
@@ -1237,13 +1274,16 @@
             var coreA2 = coreAlpha * (1 + 0.75 * heat) * spawnFade;
             var warm = 'rgba(255, 175, 90,' + Math.min(1, haloA).toFixed(3) + ')';
 
-            // Soft glow halo
-            ctx.shadowBlur = 14 + s.r * 12 + 16 * heat;
-            ctx.shadowColor = warm;
-            ctx.beginPath();
-            ctx.fillStyle = warm;
-            ctx.arc(px, py, haloR, 0, Math.PI * 2);
-            ctx.fill();
+            // Soft glow halo (expensive): draw fewer and cheaper on weak frames/devices.
+            if ((i % starDrawStride) === 0) {
+              var haloBlur = (isLowPowerDevice() || perfQ < 0.82) ? (6 + s.r * 6 + 8 * heat) : (14 + s.r * 12 + 16 * heat);
+              ctx.shadowBlur = haloBlur;
+              ctx.shadowColor = warm;
+              ctx.beginPath();
+              ctx.fillStyle = warm;
+              ctx.arc(px, py, haloR, 0, Math.PI * 2);
+              ctx.fill();
+            }
 
             // Bright core point
             ctx.shadowBlur = 0;
@@ -1277,35 +1317,38 @@
 
           // Einstein ring highlight (only when BH is near viewport)
           if (!reducedMotion && bhVisible && bh.s > 0.06) {
+            var lpRing = isLowPowerDevice();
             ctx.save();
             ctx.translate(bh.cx, bh.cy);
             ctx.globalCompositeOperation = 'screen';
             ctx.globalAlpha = Math.min(1, 0.34 + 0.56 * bh.s);
             ctx.strokeStyle = 'rgba(255, 255, 255, 1)';
-            ctx.lineWidth = Math.max(2.8, bh.horizonR * 0.16);
+            ctx.lineWidth = Math.max(lpRing ? 1.6 : 2.8, bh.horizonR * (lpRing ? 0.09 : 0.16));
             ctx.beginPath();
             ctx.arc(0, 0, bh.horizonR * (1.95 + 0.25 * bh.s), 0, Math.PI * 2);
             ctx.stroke();
 
-            // Soft glow around ring
-            ctx.globalAlpha = Math.min(1, 0.26 + 0.44 * bh.s);
-            ctx.shadowBlur = 100 + 240 * bh.s;
-            ctx.shadowColor = 'rgba(255, 52, 6, 1)';
-            ctx.lineWidth = Math.max(2.2, bh.horizonR * 0.12);
-            ctx.strokeStyle = 'rgba(255, 96, 24, 0.98)';
-            ctx.beginPath();
-            ctx.arc(0, 0, bh.horizonR * (1.95 + 0.25 * bh.s), 0, Math.PI * 2);
-            ctx.stroke();
+            if (!lpRing) {
+              // Soft glow around ring
+              ctx.globalAlpha = Math.min(1, 0.26 + 0.44 * bh.s);
+              ctx.shadowBlur = 100 + 240 * bh.s;
+              ctx.shadowColor = 'rgba(255, 52, 6, 1)';
+              ctx.lineWidth = Math.max(2.2, bh.horizonR * 0.12);
+              ctx.strokeStyle = 'rgba(255, 96, 24, 0.98)';
+              ctx.beginPath();
+              ctx.arc(0, 0, bh.horizonR * (1.95 + 0.25 * bh.s), 0, Math.PI * 2);
+              ctx.stroke();
 
-            // Nuclear-hot outer accent for maximum warm contrast.
-            ctx.globalAlpha = Math.min(1, 0.22 + 0.38 * bh.s);
-            ctx.shadowBlur = 160 + 420 * bh.s;
-            ctx.shadowColor = 'rgba(255, 24, 0, 1)';
-            ctx.lineWidth = Math.max(2.8, bh.horizonR * 0.14);
-            ctx.strokeStyle = 'rgba(255, 70, 10, 0.98)';
-            ctx.beginPath();
-            ctx.arc(0, 0, bh.horizonR * (2.02 + 0.28 * bh.s), 0, Math.PI * 2);
-            ctx.stroke();
+              // Nuclear-hot outer accent for maximum warm contrast.
+              ctx.globalAlpha = Math.min(1, 0.22 + 0.38 * bh.s);
+              ctx.shadowBlur = 160 + 420 * bh.s;
+              ctx.shadowColor = 'rgba(255, 24, 0, 1)';
+              ctx.lineWidth = Math.max(2.8, bh.horizonR * 0.14);
+              ctx.strokeStyle = 'rgba(255, 70, 10, 0.98)';
+              ctx.beginPath();
+              ctx.arc(0, 0, bh.horizonR * (2.02 + 0.28 * bh.s), 0, Math.PI * 2);
+              ctx.stroke();
+            }
             ctx.restore();
           }
 

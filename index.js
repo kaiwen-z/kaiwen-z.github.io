@@ -524,21 +524,22 @@
           // High live ratio => shorter delays (more frequent rays).
           // Low live ratio => longer delays. Keep windows wide to avoid obvious patterns.
           var ratio = clamp01(liveRatio);
+          var effectiveRatio = Math.min(1, ratio * 0.943);
           if (burstClusterRemaining > 0) {
             // Cluster spacing: quick but still random.
-            var cmin = 120;
-            var cmax = 420;
+            var cmin = 110;
+            var cmax = 380;
             nextRandomRayAt = now + cmin + Math.random() * (cmax - cmin);
             burstClusterRemaining -= 1;
             return;
           }
 
-          var minDelay = 1100 + (1 - ratio) * 7600;
-          var maxDelay = 7000 + (1 - ratio) * 26000;
+          var minDelay = 950 + (1 - effectiveRatio) * 5600;
+          var maxDelay = 5200 + (1 - effectiveRatio) * 18500;
           nextRandomRayAt = now + minDelay + Math.random() * (maxDelay - minDelay);
 
           // Slight clustering: occasionally schedule a short follow-up run.
-          var clusterChance = 0.10 + 0.12 * ratio; // modest, more likely when lots of particles
+          var clusterChance = Math.min(0.40, 0.08 + 0.10 * effectiveRatio);
           if (Math.random() < clusterChance) {
             burstClusterRemaining = 1 + Math.floor(Math.random() * 3); // 1..3 additional quick bursts
           }
@@ -573,7 +574,7 @@
           var liveRatio = initialStarCount > 0 ? (live / initialStarCount) : 0;
           if (!nextRandomRayAt) {
             // Startup guard: avoid instant barrage when loading near page bottom.
-            var startupExtra = 1500 + Math.random() * 4500;
+            var startupExtra = 400 + Math.random() * 1200;
             nextRandomRayAt = now + startupExtra;
           }
           if (now < nextRandomRayAt) return;
@@ -582,7 +583,6 @@
             var burst = gammaBurstPointsFromImpact(candidate.hist, bh);
             if (burst) {
               spawnFlash(burst, 1.0, candidate.d);
-              candidate.dead = true;
             }
           }
           scheduleNextRandomRay(now, liveRatio);
@@ -826,130 +826,158 @@
           };
         }
 
-        function drawAccretionDisk(bh, now) {
+        function drawAccretionDisk(bh, now, perfQ) {
           if (bh.s <= 0.001) return;
 
           var s = bh.s;
-          var r = bh.diskR;
-          var hole = bh.horizonR;
-          var diskY = -r * (0.06 + 0.03 * s); // slight vertical offset sells lensing like the "classic" image
+          var q = Math.max(0.62, Math.min(1, typeof perfQ === 'number' ? perfQ : 1));
+          var eventHorizonR = bh.horizonR * 2.2;
+          var tilt = (-Math.PI / 4) + bh.rot; // right side up 45deg
+          var diskA = eventHorizonR * 1.30;
+          var diskB = eventHorizonR * 0.19;
+          var drawFringe = q > 0.82 && s > 0.12;
+          var drawLegacyBackGlow = q > 0.72 && s > 0.08;
+          var drawOuterHorizonHalo = q > 0.80 && s > 0.10;
 
-          // Accretion disk + lens bands (drawn in rotated space)
-          ctx.save();
-          ctx.translate(bh.cx, bh.cy);
-          // Fixed cinematic tilt: ~45° feel, with right side "higher".
-          // We approximate this by rotating the disk plane and applying a perspective-ish squish.
-          ctx.rotate((-Math.PI / 4) + bh.rot);
-          ctx.scale(1, bh.squish * 0.72);
+          function drawDiskHalf(isForeground) {
+            var startAngle = isForeground ? Math.PI : 0;
+            var endAngle = isForeground ? Math.PI * 2 : Math.PI;
+            var depthMul = isForeground ? 1 : 0.82;
 
-          ctx.globalCompositeOperation = 'screen';
+            // Outer red-orange plasma layer.
+            ctx.beginPath();
+            ctx.ellipse(0, 0, diskA, diskB, tilt, startAngle, endAngle);
+            ctx.lineCap = 'round';
+            ctx.globalCompositeOperation = isForeground ? 'source-over' : 'screen';
+            ctx.globalAlpha = isForeground ? Math.min(1, 0.92 + 0.08 * s) : Math.min(1, 0.72 + 0.22 * s);
+            ctx.strokeStyle = isForeground ? 'rgba(255, 142, 74, 0.98)' : 'rgba(244, 118, 72, 0.94)';
+            ctx.lineWidth = Math.max(6.0, eventHorizonR * 0.26);
+            ctx.shadowBlur = ((isForeground ? (180 + 420 * s) : (240 + 560 * s)) * depthMul) * q;
+            ctx.shadowColor = isForeground ? 'rgba(255, 62, 12, 1)' : 'rgba(226, 58, 18, 0.98)';
+            ctx.stroke();
 
-          // Relativistic beaming: brighten one side of disk (static; no spin).
-          var beamDir = 0.22;
-          var lg = ctx.createLinearGradient(-r, 0, r, 0);
-          lg.addColorStop(0.00, 'rgba(255, 245, 235,' + (0.04 + 0.10 * s).toFixed(3) + ')');
-          lg.addColorStop(0.22 + beamDir * 0.10, 'rgba(255, 210, 170,' + (0.10 + 0.22 * s).toFixed(3) + ')');
-          lg.addColorStop(0.50, 'rgba(255, 145, 55,' + (0.14 + 0.30 * s).toFixed(3) + ')');
-          lg.addColorStop(0.78 - beamDir * 0.10, 'rgba(255, 220, 185,' + (0.22 + 0.40 * s).toFixed(3) + ')');
-          lg.addColorStop(1.00, 'rgba(0,0,0,0)');
+            // Mid orange band adds depth between core and halo.
+            ctx.beginPath();
+            ctx.ellipse(0, 0, diskA * 0.992, diskB * 0.92, tilt, startAngle, endAngle);
+            ctx.globalAlpha = isForeground ? Math.min(1, 0.82 + 0.14 * s) : Math.min(1, 0.62 + 0.22 * s);
+            ctx.strokeStyle = isForeground ? 'rgba(255, 106, 42, 0.96)' : 'rgba(230, 86, 46, 0.92)';
+            ctx.lineWidth = Math.max(5.0, eventHorizonR * 0.20);
+            ctx.shadowBlur = ((isForeground ? (120 + 300 * s) : (170 + 420 * s)) * depthMul) * q;
+            ctx.shadowColor = isForeground ? 'rgba(255, 76, 18, 0.98)' : 'rgba(160, 56, 136, 0.90)';
+            ctx.stroke();
 
-          // Wide disk body (elliptical band, not a full donut)
-          ctx.save();
-          ctx.translate(0, diskY);
-          ctx.fillStyle = lg;
-          ctx.globalAlpha = 0.95;
-          ctx.beginPath();
-          ctx.ellipse(0, 0, r * 1.18, r * 0.30, 0, 0, Math.PI * 2);
-          ctx.fill();
+            // White-hot core line for both halves so colors/layering match.
+            ctx.beginPath();
+            ctx.ellipse(0, 0, diskA * 0.985, diskB * 0.88, tilt, startAngle, endAngle);
+            ctx.globalAlpha = 1;
+            ctx.strokeStyle = 'rgba(255, 255, 246, 1)';
+            ctx.lineWidth = Math.max(3.8, eventHorizonR * 0.18);
+            ctx.shadowBlur = ((isForeground ? (180 + 420 * s) : (220 + 520 * s)) * depthMul) * q;
+            ctx.shadowColor = 'rgba(255, 200, 120, 1)';
+            ctx.stroke();
 
-          // Hot inner band (thin, white-hot) + strong cinematic bloom
-          ctx.globalAlpha = (0.90 * s);
-          ctx.shadowBlur = 60 + 180 * s;
-          ctx.shadowColor = 'rgba(255, 220, 185, 0.85)';
-          ctx.strokeStyle = 'rgba(255, 255, 255, 0.92)';
-          ctx.lineWidth = Math.max(1.6, r * 0.034);
-          ctx.beginPath();
-          ctx.ellipse(0, 0, r * 0.88, r * 0.20, 0, 0, Math.PI * 2);
-          ctx.stroke();
-          ctx.shadowBlur = 0;
+            // Exotic ionized fringe: subtle magenta/purple chroma.
+            if (drawFringe) {
+              ctx.beginPath();
+              ctx.ellipse(0, 0, diskA * 1.01, diskB * 0.98, tilt, startAngle, endAngle);
+              ctx.globalAlpha = isForeground ? 0 : Math.min(1, 0.30 + 0.12 * s);
+              ctx.strokeStyle = isForeground ? 'rgba(0, 0, 0, 0)' : 'rgba(188, 98, 246, 0.62)';
+              ctx.lineWidth = Math.max(2.2, eventHorizonR * 0.10);
+              ctx.shadowBlur = isForeground ? 0 : ((130 + 280 * s) * depthMul) * q;
+              ctx.shadowColor = isForeground ? 'rgba(0, 0, 0, 0)' : 'rgba(168, 72, 232, 0.92)';
+              ctx.stroke();
+            }
 
-          // Lensed "upper" band (the classic second arc you see in Interstellar)
-          ctx.globalAlpha = (0.40 + 0.52 * s);
-          ctx.strokeStyle = 'rgba(255, 245, 235, 0.88)';
-          ctx.lineWidth = Math.max(1.3, r * 0.024);
-          ctx.beginPath();
-          ctx.ellipse(0, -r * 0.46, r * 0.76, r * 0.085, 0, 0, Math.PI * 2);
-          ctx.stroke();
+            // Needle-thin scorching center to boost perceived temperature.
+            ctx.beginPath();
+            ctx.ellipse(0, 0, diskA * 0.978, diskB * 0.82, tilt, startAngle, endAngle);
+            ctx.globalAlpha = Math.min(1, 0.92 + 0.08 * s);
+            ctx.strokeStyle = 'rgba(255, 255, 255, 1)';
+            ctx.lineWidth = Math.max(1.8, eventHorizonR * 0.08);
+            ctx.shadowBlur = ((isForeground ? (140 + 340 * s) : (170 + 420 * s)) * depthMul) * q;
+            ctx.shadowColor = 'rgba(255, 225, 170, 1)';
+            ctx.stroke();
+            ctx.shadowBlur = 0;
+          }
 
-          // Soft glow around the lensed band
-          ctx.globalAlpha = (0.26 + 0.46 * s);
-          ctx.shadowBlur = 90 + 260 * s;
-          ctx.shadowColor = 'rgba(255, 205, 160, 0.88)';
-          ctx.strokeStyle = 'rgba(255, 205, 160, 0.72)';
-          ctx.lineWidth = Math.max(1.2, r * 0.020);
-          ctx.beginPath();
-          ctx.ellipse(0, -r * 0.46, r * 0.76, r * 0.085, 0, 0, Math.PI * 2);
-          ctx.stroke();
-          ctx.shadowBlur = 0;
-
-          // Dark underside occlusion (disk self-shadow)
-          ctx.globalCompositeOperation = 'multiply';
-          ctx.globalAlpha = 0.42 * s;
-          ctx.fillStyle = 'rgba(0,0,0,1)';
-          ctx.beginPath();
-          ctx.ellipse(0, r * 0.10, r * 1.22, r * 0.36, 0, 0, Math.PI * 2);
-          ctx.fill();
-          ctx.restore();
-
-          ctx.restore();
-          ctx.globalAlpha = 1;
-          ctx.globalCompositeOperation = 'source-over';
-
-          // Black hole shadow + photon ring (drawn in normal space)
           ctx.save();
           ctx.translate(bh.cx, bh.cy);
 
-          // Deep shadow core
-          ctx.fillStyle = 'rgba(0,0,0,1)';
-          ctx.beginPath();
-          ctx.arc(0, 0, hole * 1.06, 0, Math.PI * 2);
-          ctx.fill();
+          // Legacy full background ellipse pass (from previous implementation).
+          if (drawLegacyBackGlow) {
+            ctx.globalCompositeOperation = 'screen';
+            ctx.globalAlpha = Math.min(1, 0.62 + 0.28 * s);
+            ctx.shadowBlur = (260 + 700 * s) * q;
+            ctx.shadowColor = 'rgba(255, 70, 18, 1)';
+            ctx.strokeStyle = 'rgba(255, 180, 95, 0.96)';
+            ctx.lineWidth = Math.max(3.8, eventHorizonR * 0.18);
+            ctx.beginPath();
+            ctx.ellipse(0, 0, diskA * 1.02, diskB * 1.08, tilt, 0, Math.PI * 2);
+            ctx.stroke();
+            ctx.shadowBlur = 0;
+          }
 
-          // Photon ring: sharp bright rim (the "classic" look)
-          ctx.globalCompositeOperation = 'screen';
-          ctx.globalAlpha = 0.38 + 0.52 * s;
-          ctx.shadowBlur = 120 + 360 * s;
-          ctx.shadowColor = 'rgba(255, 235, 210, 0.95)';
-          ctx.strokeStyle = 'rgba(255, 255, 255, 0.96)';
-          ctx.lineWidth = Math.max(1.6, hole * 0.14);
-          ctx.beginPath();
-          ctx.arc(0, 0, hole * 1.16, 0, Math.PI * 2);
-          ctx.stroke();
-          ctx.shadowBlur = 0;
+          // 1) Back half arch
+          drawDiskHalf(false);
 
-          // Extra aura pass: wider, softer halo
-          ctx.globalAlpha = 0.22 + 0.46 * s;
-          ctx.shadowBlur = 220 + 520 * s;
-          ctx.shadowColor = 'rgba(255, 200, 150, 0.75)';
-          ctx.strokeStyle = 'rgba(255, 200, 150, 0.38)';
-          ctx.lineWidth = Math.max(2.2, hole * 0.22);
-          ctx.beginPath();
-          ctx.arc(0, 0, hole * 1.20, 0, Math.PI * 2);
-          ctx.stroke();
-          ctx.shadowBlur = 0;
-
-          // Inner falloff (makes the edge feel like it curves away)
-          var edge = ctx.createRadialGradient(0, 0, hole * 0.65, 0, 0, hole * 1.85);
-          edge.addColorStop(0.00, 'rgba(0,0,0,1)');
-          edge.addColorStop(0.62, 'rgba(0,0,0,1)');
-          edge.addColorStop(0.86, 'rgba(0,0,0,0.92)');
-          edge.addColorStop(1.00, 'rgba(0,0,0,0)');
+          // 2) Event horizon (abrupt black circle)
           ctx.globalCompositeOperation = 'source-over';
           ctx.globalAlpha = 1;
-          ctx.fillStyle = edge;
+          ctx.fillStyle = 'rgba(0,0,0,1)';
           ctx.beginPath();
-          ctx.arc(0, 0, hole * 1.85, 0, Math.PI * 2);
+          ctx.arc(0, 0, eventHorizonR * 0.995, 0, Math.PI * 2);
           ctx.fill();
+
+          // Event-horizon outline ring: layered, white-hot core with rich outward falloff.
+          ctx.globalCompositeOperation = 'screen';
+
+          // Core white-hot edge.
+          ctx.globalAlpha = Math.min(1, 0.92 + 0.08 * s);
+          ctx.shadowBlur = (150 + 360 * s) * q;
+          ctx.shadowColor = 'rgba(255, 170, 86, 1)';
+          ctx.strokeStyle = 'rgba(255, 255, 250, 1)';
+          ctx.lineWidth = Math.max(3.4, eventHorizonR * 0.16);
+          ctx.beginPath();
+          ctx.arc(0, 0, eventHorizonR * 1.004, 0, Math.PI * 2);
+          ctx.stroke();
+
+          // Mid orange/red plasma band.
+          ctx.globalAlpha = Math.min(1, 0.78 + 0.16 * s);
+          ctx.shadowBlur = (230 + 560 * s) * q;
+          ctx.shadowColor = 'rgba(255, 82, 22, 1)';
+          ctx.strokeStyle = 'rgba(255, 122, 42, 0.98)';
+          ctx.lineWidth = Math.max(5.0, eventHorizonR * 0.24);
+          ctx.beginPath();
+          ctx.arc(0, 0, eventHorizonR * 1.018, 0, Math.PI * 2);
+          ctx.stroke();
+
+          if (drawOuterHorizonHalo) {
+            // Outer deep-red halo that fades into space.
+            ctx.globalAlpha = Math.min(1, 0.54 + 0.20 * s);
+            ctx.shadowBlur = (340 + 860 * s) * q;
+            ctx.shadowColor = 'rgba(255, 44, 10, 0.98)';
+            ctx.strokeStyle = 'rgba(220, 68, 34, 0.82)';
+            ctx.lineWidth = Math.max(6.2, eventHorizonR * 0.30);
+            ctx.beginPath();
+            ctx.arc(0, 0, eventHorizonR * 1.036, 0, Math.PI * 2);
+            ctx.stroke();
+
+            // Subtle exotic chroma fringe at the far edge.
+            if (drawFringe) {
+              ctx.globalAlpha = Math.min(1, 0.24 + 0.10 * s);
+              ctx.shadowBlur = (280 + 720 * s) * q;
+              ctx.shadowColor = 'rgba(166, 72, 230, 0.92)';
+              ctx.strokeStyle = 'rgba(196, 112, 250, 0.58)';
+              ctx.lineWidth = Math.max(2.2, eventHorizonR * 0.10);
+              ctx.beginPath();
+              ctx.arc(0, 0, eventHorizonR * 1.052, 0, Math.PI * 2);
+              ctx.stroke();
+            }
+          }
+          ctx.shadowBlur = 0;
+
+          // 3) Front half track
+          drawDiskHalf(true);
 
           ctx.restore();
           ctx.globalAlpha = 1;
@@ -997,6 +1025,7 @@
             window.requestAnimationFrame(tick);
             return;
           }
+          var frameBudgetMs = lastFrameAt ? Math.max(0, now - lastFrameAt) : targetFrameMs;
           lastFrameAt = now;
 
           if (window.__fxEnabled === false) {
@@ -1022,6 +1051,8 @@
 
           updateScrollProgress();
           var bh = getBlackHole(now);
+          var slow = frameBudgetMs > 22 ? 1 : 0;
+          var perfQ = slow ? 0.74 : 1;
 
           // Background fade-to-black near the end (in-canvas, behind everything).
           var fade = smoothstep(0.70, 1.0, scrollProgress);
@@ -1227,7 +1258,7 @@
 
           // Draw black hole only when near viewport to reduce expensive blur passes.
           if (bhVisible) {
-            drawAccretionDisk(bh, now);
+            drawAccretionDisk(bh, now, perfQ);
           }
 
           // Einstein ring highlight (only when BH is near viewport)
@@ -1235,21 +1266,31 @@
             ctx.save();
             ctx.translate(bh.cx, bh.cy);
             ctx.globalCompositeOperation = 'screen';
-            ctx.globalAlpha = 0.10 + 0.22 * bh.s;
-            ctx.strokeStyle = 'rgba(255, 235, 210, 0.9)';
-            ctx.lineWidth = Math.max(1, bh.horizonR * 0.09);
+            ctx.globalAlpha = Math.min(1, 0.34 + 0.56 * bh.s);
+            ctx.strokeStyle = 'rgba(255, 255, 255, 1)';
+            ctx.lineWidth = Math.max(2.8, bh.horizonR * 0.16);
             ctx.beginPath();
             ctx.arc(0, 0, bh.horizonR * (1.95 + 0.25 * bh.s), 0, Math.PI * 2);
             ctx.stroke();
 
             // Soft glow around ring
-            ctx.globalAlpha = 0.06 + 0.14 * bh.s;
-            ctx.shadowBlur = 22 + 42 * bh.s;
-            ctx.shadowColor = 'rgba(255, 170, 95, 0.55)';
-            ctx.lineWidth = Math.max(1, bh.horizonR * 0.05);
-            ctx.strokeStyle = 'rgba(255, 170, 95, 0.55)';
+            ctx.globalAlpha = Math.min(1, 0.26 + 0.44 * bh.s);
+            ctx.shadowBlur = 100 + 240 * bh.s;
+            ctx.shadowColor = 'rgba(255, 52, 6, 1)';
+            ctx.lineWidth = Math.max(2.2, bh.horizonR * 0.12);
+            ctx.strokeStyle = 'rgba(255, 96, 24, 0.98)';
             ctx.beginPath();
             ctx.arc(0, 0, bh.horizonR * (1.95 + 0.25 * bh.s), 0, Math.PI * 2);
+            ctx.stroke();
+
+            // Nuclear-hot outer accent for maximum warm contrast.
+            ctx.globalAlpha = Math.min(1, 0.22 + 0.38 * bh.s);
+            ctx.shadowBlur = 160 + 420 * bh.s;
+            ctx.shadowColor = 'rgba(255, 24, 0, 1)';
+            ctx.lineWidth = Math.max(2.8, bh.horizonR * 0.14);
+            ctx.strokeStyle = 'rgba(255, 70, 10, 0.98)';
+            ctx.beginPath();
+            ctx.arc(0, 0, bh.horizonR * (2.02 + 0.28 * bh.s), 0, Math.PI * 2);
             ctx.stroke();
             ctx.restore();
           }

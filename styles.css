@@ -258,6 +258,18 @@
       cursor: pointer;
     }
 
+    /* FX on: let more background/black-hole visuals show through cards */
+    .portfolio-page:not(.fx-off) .project-card {
+      background: rgba(26, 26, 34, 0.48);
+      backdrop-filter: blur(2px);
+      -webkit-backdrop-filter: blur(2px);
+      border-color: rgba(255, 255, 255, 0.12);
+    }
+
+    .portfolio-page:not(.fx-off) .project-card:hover {
+      background: rgba(34, 34, 46, 0.56);
+    }
+
     .project-card:hover {
       border-color: rgba(255, 140, 0, 0.4);
       background: var(--bg-card-hover);

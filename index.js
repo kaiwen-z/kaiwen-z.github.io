@@ -433,6 +433,9 @@
         var lastLowPowerState = isLowPowerDevice();
         var autoLowPowerEnteredAt = 0;
         var autoExitCooldownMs = 2500;
+        var starsInitialized = false;
+        var prevW = 0;
+        var prevH = 0;
 
         function clamp01(x) { return x < 0 ? 0 : x > 1 ? 1 : x; }
         function smoothstep(a, b, x) {
@@ -452,6 +455,8 @@
         }
 
         function resize() {
+          prevW = w || window.innerWidth;
+          prevH = h || window.innerHeight;
           w = window.innerWidth;
           h = window.innerHeight;
           dpr = Math.min(isLowPowerDevice() ? 1.1 : 1.5, window.devicePixelRatio || 1);
@@ -462,40 +467,63 @@
           canvas.style.height = h + 'px';
           ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
 
-          var perfMul = isLowPowerDevice() ? 0.85 : 1;
-          var count = Math.max(isLowPowerDevice() ? 25 : 34, Math.floor(((w * h) / 19000) * 1.3 * perfMul * 0.7));
-          initialStarCount = count;
-          stars = new Array(count).fill(0).map(function () {
-            // Speed distribution: current speed ~= average.
-            // Most stars are slower, a few are faster (rarer).
-            // We scale the buckets so the expected multiplier is ~1.
-            var u = Math.random();
-            var bucketMul = (u < 0.75) ? 0.7 : (u < 0.95) ? 1.0 : 2.5;
-            var norm = 1 / 0.85; // makes average ~1.0
-            var speedMul = bucketMul * norm;
-            var baseVx = -0.05 + Math.random() * 0.1;
-            var baseVy = -0.03 + Math.random() * 0.06;
-            return {
-              x: Math.random() * w,
-              y: Math.random() * h,
-              r: 0.8 + Math.random() * 1.9,
-              vx: baseVx * speedMul,
-              vy: baseVy * speedMul,
-              a: 0.22 + Math.random() * 0.46,
-              d: 0.25 + Math.random() * 0.75,
-              px: 0,
-              py: 0,
-              heat: 0,
-              hist: [],
-              born: (performance.now ? performance.now() : Date.now()),
-              spin: (Math.random() < 0.5 ? -1 : 1),
-              seed: Math.random() * 1000
-            };
-          });
-          for (var i = 0; i < stars.length; i++) {
-            stars[i].px = stars[i].x;
-            stars[i].py = stars[i].y;
-            stars[i].hist = [{ x: stars[i].x, y: stars[i].y }];
+          // Stars should only be seeded once per page load.
+          if (!starsInitialized) {
+            var perfMul = isLowPowerDevice() ? 0.85 : 1;
+            var count = Math.max(isLowPowerDevice() ? 25 : 34, Math.floor(((w * h) / 19000) * 1.3 * perfMul * 0.7));
+            initialStarCount = count;
+            stars = new Array(count).fill(0).map(function () {
+              // Speed distribution: current speed ~= average.
+              // Most stars are slower, a few are faster (rarer).
+              // We scale the buckets so the expected multiplier is ~1.
+              var u = Math.random();
+              var bucketMul = (u < 0.75) ? 0.7 : (u < 0.95) ? 1.0 : 2.5;
+              var norm = 1 / 0.85; // makes average ~1.0
+              var speedMul = bucketMul * norm;
+              var baseVx = -0.05 + Math.random() * 0.1;
+              var baseVy = -0.03 + Math.random() * 0.06;
+              return {
+                x: Math.random() * w,
+                y: Math.random() * h,
+                r: 0.8 + Math.random() * 1.9,
+                vx: baseVx * speedMul,
+                vy: baseVy * speedMul,
+                a: 0.22 + Math.random() * 0.46,
+                d: 0.25 + Math.random() * 0.75,
+                px: 0,
+                py: 0,
+                heat: 0,
+                hist: [],
+                born: (performance.now ? performance.now() : Date.now()),
+                spin: (Math.random() < 0.5 ? -1 : 1),
+                seed: Math.random() * 1000
+              };
+            });
+            for (var i = 0; i < stars.length; i++) {
+              stars[i].px = stars[i].x;
+              stars[i].py = stars[i].y;
+              stars[i].hist = [{ x: stars[i].x, y: stars[i].y }];
+            }
+            starsInitialized = true;
+            return;
+          }
+
+          // On resize/perf-mode changes, preserve existing stars instead of re-seeding.
+          var sx = prevW > 0 ? (w / prevW) : 1;
+          var sy = prevH > 0 ? (h / prevH) : 1;
+          for (var j = 0; j < stars.length; j++) {
+            var s = stars[j];
+            if (!s) continue;
+            s.x *= sx;
+            s.y *= sy;
+            s.px *= sx;
+            s.py *= sy;
+            if (s.hist && s.hist.length) {
+              for (var hi = 0; hi < s.hist.length; hi++) {
+                s.hist[hi].x *= sx;
+                s.hist[hi].y *= sy;
+              }
+            }
           }
         }
 

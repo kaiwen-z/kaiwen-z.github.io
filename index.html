@@ -82,6 +82,19 @@
       z-index: 10;
     }
 
+    /* Full-screen cinematic burst layer (for bottom-origin gamma beams) */
+    .btn-explosion-layer.is-global {
+      position: fixed;
+      inset: 0;
+      z-index: 12;
+      display: block;
+      width: auto;
+      height: auto;
+      overflow: hidden;
+      contain: paint;
+      clip-path: inset(0 0 0 0);
+    }
+
     .btn-explosion-particle {
       position: absolute;
       width: 10px;
@@ -212,32 +225,42 @@
       overflow: hidden;
     }
 
-    /* Section-title spotlight (small + centered behind titles) */
-    .title-spotlight {
-      position: relative;
-      display: inline-block;
-      isolation: isolate;
-    }
-
-    .title-spotlight::before {
-      content: "";
-      position: absolute;
+    /* Subtle readability ribbon: transparent at top, fades in lower down */
+    .content-ribbon {
+      position: fixed;
+      top: 0;
+      bottom: 0;
       left: 50%;
-      top: 52%;
-      width: min(520px, 92vw);
-      height: 88px;
-      transform: translate(-50%, -50%) scale(0.98);
+      transform: translateX(-50%);
+      width: min(1040px, 96vw);
       pointer-events: none;
-      z-index: -1;
-      opacity: 0;
-      background: radial-gradient(260px 70px at 50% 50%, rgba(255, 140, 0, 0.14), transparent 70%);
-      filter: blur(10px);
-      transition: opacity 650ms ease, transform 650ms cubic-bezier(.2,.9,.2,1);
+      z-index: 6;
+      mix-blend-mode: normal;
+      opacity: clamp(0.52, calc(0.52 + var(--end-fade) * 0.75), 1);
+      background:
+        linear-gradient(
+          180deg,
+          rgba(8, 8, 12, 0.00) 0%,
+          rgba(8, 8, 12, 0.00) 26%,
+          rgba(8, 8, 12, 0.07) 42%,
+          rgba(8, 8, 12, 0.15) 60%,
+          rgba(8, 8, 12, 0.24) 78%,
+          rgba(8, 8, 12, 0.34) 100%
+        ),
+        radial-gradient(
+          140% 120% at 50% 100%,
+          rgba(0, 0, 0, 0.00) 0%,
+          rgba(0, 0, 0, 0.10) 58%,
+          rgba(0, 0, 0, 0.20) 100%
+        );
+      border-left: 1px solid rgba(255, 255, 255, 0.03);
+      border-right: 1px solid rgba(255, 255, 255, 0.03);
     }
 
-    .title-spotlight.spotlight-on::before {
-      opacity: 1;
-      transform: translate(-50%, -50%) scale(1);
+    /* Keep page content above FX layers (ribbon now overlays content for readability) */
+    .portfolio-page > *:not(.nebula-layer):not(.ambient-stars):not(.content-ribbon) {
+      position: relative;
+      z-index: 4;
     }
 
     .hero-greeting.typewriter {
@@ -570,6 +593,7 @@
 <body class="portfolio-page">
   <div class="nebula-layer postfx-chroma" aria-hidden="true"></div>
   <canvas id="ambient-stars" class="ambient-stars postfx-chroma" aria-hidden="true"></canvas>
+  <div class="content-ribbon" aria-hidden="true"></div>
 
   <nav>
     <div class="nav-inner">
@@ -594,7 +618,7 @@
     </p>
     <p class="hero-rotator">Focus: <span id="hero-rotating-text" class="rotator-word"></span></p>
     <div class="hero-links">
-      <a id="view-projects-btn" href="#projects" class="btn btn-primary btn-view-projects" onclick="event.preventDefault();document.getElementById('projects').scrollIntoView({behavior:'smooth',block:'start'})">
+      <a id="view-projects-btn" href="#projects" class="btn btn-primary btn-view-projects">
         <svg viewBox="0 0 16 16" xmlns="http://www.w3.org/2000/svg"><path d="M8 4a.75.75 0 01.75.75v5.69l2.22-2.22a.75.75 0 111.06 1.06l-3.5 3.5a.75.75 0 01-1.06 0l-3.5-3.5a.75.75 0 111.06-1.06l2.22 2.22V4.75A.75.75 0 018 4z"/></svg>
         View Projects
       </a>
@@ -886,32 +910,50 @@
         return layer;
       }
 
+      function ensureGlobalExplosionLayer() {
+        var existing = document.getElementById('global-btn-explosion-layer');
+        if (existing) return existing;
+        var layer = document.createElement('span');
+        layer.id = 'global-btn-explosion-layer';
+        layer.className = 'btn-explosion-layer is-global';
+        document.body.appendChild(layer);
+        return layer;
+      }
+
       function explode(btn) {
         if (prefersReducedMotion()) return;
         var layer = ensureExplosionLayer(btn);
+        var globalLayer = ensureGlobalExplosionLayer();
 
-        // Make it fill the whole screen: travel based on viewport.
         var vw = Math.max(document.documentElement.clientWidth || 0, window.innerWidth || 0);
         var vh = Math.max(document.documentElement.clientHeight || 0, window.innerHeight || 0);
-        var maxR = Math.sqrt(vw * vw + vh * vh) * 0.95; // enough to fly off-screen
+        var topLeftReach = Math.sqrt(vw * vw + vh * vh) * 1.05;
 
-        // Laser beams (fast traveling particles from button center)
-        var beamCount = 104;
+        // Cinematic gamma rays launching from the bottom of the screen.
+        var beamCount = 22;
         for (var i = 0; i < beamCount; i++) {
           var beam = document.createElement('span');
           beam.className = 'btn-explosion-particle is-beam';
-          beam.style.left = '50%';
-          beam.style.top = '50%';
+          beam.style.left = (68 + Math.random() * 28).toFixed(2) + '%';
+          beam.style.top = (92 + Math.random() * 8).toFixed(2) + '%';
 
-          var a = (Math.PI * 2 * i) / beamCount + (Math.random() - 0.5) * 0.25;
-          var dist = maxR * (0.82 + Math.random() * 0.22);
-          var dxB = Math.cos(a) * dist;
-          var dyB = Math.sin(a) * dist;
+          var targetX = (22 + Math.random() * 30) / 100 * vw;
+          var targetY = -(0.90 + Math.random() * 1.20) * vh;
+          var originX = parseFloat(beam.style.left) / 100 * vw;
+          var originY = parseFloat(beam.style.top) / 100 * vh;
+          var dxB = targetX - originX;
+          var dyB = targetY - originY;
+          // normalize to long travel so they cross the viewport fully
+          var mag = Math.max(1, Math.sqrt(dxB * dxB + dyB * dyB));
+          var scale = topLeftReach / mag;
+          dxB *= scale;
+          dyB *= scale;
 
+          var a = Math.atan2(dyB, dxB);
           var rot = (a * 180) / Math.PI + 90;
-          var h = 90 + Math.random() * 190;
-          var w = 2 + Math.random() * 3.5;
-          var dur = (140 + Math.random() * 180) * 2; // 50% speed (double duration)
+          var h = 150 + Math.random() * 260;
+          var w = 1.8 + Math.random() * 2.8;
+          var dur = 260 + Math.random() * 260;
 
           beam.style.setProperty('--dx', dxB.toFixed(1) + 'px');
           beam.style.setProperty('--dy', dyB.toFixed(1) + 'px');
@@ -920,31 +962,31 @@
           beam.style.setProperty('--w', w.toFixed(1) + 'px');
           beam.style.setProperty('--dur', dur.toFixed(0) + 'ms');
 
-          layer.appendChild(beam);
+          globalLayer.appendChild(beam);
 
           (function (node) {
             window.setTimeout(function () {
               if (node && node.parentNode) node.parentNode.removeChild(node);
-            }, 650);
+            }, 900);
           })(beam);
         }
 
-        // Flame embers + smoke blooms (slightly slower, adds punch)
-        var emberCount = 72;
+        // Local burst of light particles from the button itself.
+        var emberCount = 34;
         for (var j = 0; j < emberCount; j++) {
           var ember = document.createElement('span');
           ember.className = 'btn-explosion-particle';
           ember.style.left = '50%';
           ember.style.top = '50%';
-          ember.style.background = 'rgba(255, 140, 0, 0.95)';
-          ember.style.boxShadow = '0 0 18px rgba(255, 140, 0, 0.35), 0 0 2px rgba(255,255,255,0.25)';
+          ember.style.background = 'rgba(255, 220, 180, 0.96)';
+          ember.style.boxShadow = '0 0 18px rgba(255, 220, 180, 0.42), 0 0 24px rgba(120,220,255,0.24)';
 
           var a2 = Math.random() * Math.PI * 2;
-          var dist2 = maxR * (0.35 + Math.random() * 0.35);
+          var dist2 = 90 + Math.random() * 170;
           var dxE = Math.cos(a2) * dist2;
           var dyE = Math.sin(a2) * dist2;
-          var s2 = 0.6 + Math.random() * 1.1;
-          var dur2 = (160 + Math.random() * 180) * 2; // 50% speed
+          var s2 = 0.6 + Math.random() * 1.0;
+          var dur2 = 220 + Math.random() * 260;
 
           ember.style.setProperty('--dx', dxE.toFixed(1) + 'px');
           ember.style.setProperty('--dy', dyE.toFixed(1) + 'px');
@@ -956,11 +998,11 @@
           (function (node) {
             window.setTimeout(function () {
               if (node && node.parentNode) node.parentNode.removeChild(node);
-            }, 520);
+            }, 700);
           })(ember);
         }
 
-        var smokeCount = 40;
+        var smokeCount = 14;
         for (var k = 0; k < smokeCount; k++) {
           var smoke = document.createElement('span');
           smoke.className = 'btn-explosion-particle is-smoke';
@@ -968,11 +1010,11 @@
           smoke.style.top = '50%';
 
           var a3 = Math.random() * Math.PI * 2;
-          var dist3 = maxR * (0.18 + Math.random() * 0.22);
+          var dist3 = 80 + Math.random() * 120;
           var dxS = Math.cos(a3) * dist3;
           var dyS = Math.sin(a3) * dist3;
           var sz = 22 + Math.random() * 28;
-          var dur3 = (360 + Math.random() * 260) * 2; // 50% speed
+          var dur3 = 420 + Math.random() * 360;
 
           smoke.style.setProperty('--dx', dxS.toFixed(1) + 'px');
           smoke.style.setProperty('--dy', dyS.toFixed(1) + 'px');
@@ -985,7 +1027,7 @@
           (function (node) {
             window.setTimeout(function () {
               if (node && node.parentNode) node.parentNode.removeChild(node);
-            }, 900);
+            }, 1100);
           })(smoke);
         }
       }
@@ -1019,12 +1061,21 @@
 
         var autoRan = false;
 
-        // Add explosion on real user clicks too
         btn.addEventListener('pointerdown', function () {
           if (window.__fxEnabled === false) return;
           autoRan = true; // user interacted; don't auto-trigger again
-          press(btn);
-        }, { passive: true });
+          press(btn);     // burst on press-down
+        });
+
+        // On release/click: do the scroll.
+        btn.addEventListener('click', function (e) {
+          e.preventDefault();
+          if (window.__fxEnabled === false) {
+            safeScrollToProjects();
+            return;
+          }
+          safeScrollToProjects();
+        });
 
         // Auto explosion at 3s, then scroll at 3.5s
         window.setTimeout(function () {
@@ -1222,7 +1273,7 @@
         var stars = [];
         var w = 0;
         var h = 0;
-        var dpr = Math.min(2, window.devicePixelRatio || 1);
+        var dpr = Math.min(1.5, window.devicePixelRatio || 1);
         var lastScrollY = window.scrollY || 0;
         var parX = 0;
         var parY = 0;
@@ -1237,6 +1288,8 @@
         var burstClusterRemaining = 0;
         var simStartAt = (performance.now ? performance.now() : Date.now());
         var consumeAllMs = 5 * 60 * 1000; // ~5 minutes until everything is consumed
+        var targetFrameMs = 1000 / 45;
+        var lastFrameAt = 0;
 
         function clamp01(x) { return x < 0 ? 0 : x > 1 ? 1 : x; }
         function smoothstep(a, b, x) {
@@ -1264,7 +1317,8 @@
           canvas.style.height = h + 'px';
           ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
 
-          var count = Math.max(60, Math.floor(((w * h) / 19000) * 1.3));
+          var perfMul = (navigator.hardwareConcurrency && navigator.hardwareConcurrency <= 4) ? 0.85 : 1;
+          var count = Math.max(48, Math.floor(((w * h) / 19000) * 1.3 * perfMul));
           initialStarCount = count;
           stars = new Array(count).fill(0).map(function () {
             // Speed distribution: current speed ~= average.
@@ -1804,6 +1858,17 @@
         }
 
         function tick(now) {
+          if (document.hidden) {
+            window.setTimeout(function () { window.requestAnimationFrame(tick); }, 250);
+            return;
+          }
+
+          if (lastFrameAt && (now - lastFrameAt) < targetFrameMs) {
+            window.requestAnimationFrame(tick);
+            return;
+          }
+          lastFrameAt = now;
+
           if (window.__fxEnabled === false) {
             window.requestAnimationFrame(tick);
             return;
@@ -2028,11 +2093,15 @@
             }
           }
 
-          // Draw black hole on top so it "dominates" near page end.
-          drawAccretionDisk(bh, now);
+          var bhVisible = (bh.cy + bh.diskR) > -120 && (bh.cy - bh.diskR) < (h + 180);
 
-          // Einstein ring highlight (subtle, only near the end)
-          if (!reducedMotion && bh.s > 0.06) {
+          // Draw black hole only when near viewport to reduce expensive blur passes.
+          if (bhVisible) {
+            drawAccretionDisk(bh, now);
+          }
+
+          // Einstein ring highlight (only when BH is near viewport)
+          if (!reducedMotion && bhVisible && bh.s > 0.06) {
             ctx.save();
             ctx.translate(bh.cx, bh.cy);
             ctx.globalCompositeOperation = 'screen';
@@ -2066,26 +2135,6 @@
         window.requestAnimationFrame(tick);
       }
 
-      function initSpotlightReveal() {
-        var titles = document.querySelectorAll('.about-title, .section-title');
-        titles.forEach(function (t) { t.classList.add('title-spotlight'); });
-
-        if (!('IntersectionObserver' in window)) {
-          titles.forEach(function (t) { t.classList.add('spotlight-on'); });
-          return;
-        }
-
-        var io = new IntersectionObserver(function (entries) {
-          entries.forEach(function (entry) {
-            if (entry.isIntersecting) {
-              entry.target.classList.add('spotlight-on');
-            }
-          });
-        }, { threshold: 0.12, rootMargin: '0px 0px -15% 0px' });
-
-        titles.forEach(function (t) { io.observe(t); });
-      }
-
       window.addEventListener('DOMContentLoaded', function () {
         initTypewriter();
         initRotator();
@@ -2093,7 +2142,6 @@
         initExperienceRevealAndWave();
         initProjectTilt();
         initScrollHint();
-        initSpotlightReveal();
         initAmbientStars();
       });
     })();

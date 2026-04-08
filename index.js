@@ -463,7 +463,7 @@
           ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
 
           var perfMul = isLowPowerDevice() ? 0.85 : 1;
-          var count = Math.max(isLowPowerDevice() ? 36 : 48, Math.floor(((w * h) / 19000) * 1.3 * perfMul));
+          var count = Math.max(isLowPowerDevice() ? 25 : 34, Math.floor(((w * h) / 19000) * 1.3 * perfMul * 0.7));
           initialStarCount = count;
           stars = new Array(count).fill(0).map(function () {
             // Speed distribution: current speed ~= average.
@@ -518,6 +518,7 @@
             s: Math.max(0.35, Math.min(1, strength || 0.65)),
             hue: (28 + Math.random() * 28), // warm -> hot
             d: (typeof depth === 'number' ? depth : 0.6),
+            intensityBias: 0.75 + Math.random() * 1.35,
             // Per-burst 3D-like profile variance
             wStart: 0.45 + Math.random() * 0.35,
             wMid: 0.75 + Math.random() * 0.55,
@@ -542,21 +543,21 @@
           var effectiveRatio = Math.min(1, ratio * 0.943);
           if (burstClusterRemaining > 0) {
             // Cluster spacing: quick but still random.
-            var cmin = 110;
-            var cmax = 380;
+            var cmin = 95;
+            var cmax = 240;
             nextRandomRayAt = now + cmin + Math.random() * (cmax - cmin);
             burstClusterRemaining -= 1;
             return;
           }
 
-          var minDelay = 950 + (1 - effectiveRatio) * 5600;
-          var maxDelay = 5200 + (1 - effectiveRatio) * 18500;
+          var minDelay = 1100 + (1 - effectiveRatio) * 4600;
+          var maxDelay = 3200 + (1 - effectiveRatio) * 11000;
           nextRandomRayAt = now + minDelay + Math.random() * (maxDelay - minDelay);
 
           // Slight clustering: occasionally schedule a short follow-up run.
-          var clusterChance = Math.min(0.40, 0.08 + 0.10 * effectiveRatio);
+          var clusterChance = Math.min(0.62, 0.22 + 0.24 * effectiveRatio);
           if (Math.random() < clusterChance) {
-            burstClusterRemaining = 1 + Math.floor(Math.random() * 3); // 1..3 additional quick bursts
+            burstClusterRemaining = 2 + Math.floor(Math.random() * 3); // 2..4 additional quick bursts
           }
         }
 
@@ -676,9 +677,17 @@
           dx /= dm;
           dy /= dm;
 
-          // Force a shared cinematic corridor:
-          // from bottom-right region, curving toward top middle-left.
-          var p0 = { x: bh.cx, y: bh.cy };
+          // Start from a random point inside the event horizon drawing.
+          // If horizon radius is not available yet, approximate from viewport scale.
+          var fallbackHorizon = Math.max(6, Math.min(w, h) * 0.08);
+          var horizonBase = (typeof bh.horizonR === 'number' && bh.horizonR > 0) ? bh.horizonR : fallbackHorizon;
+          var eventHorizonDrawR = horizonBase * 2.2 * 0.995;
+          var rr = Math.sqrt(Math.random()) * eventHorizonDrawR;
+          var ra = Math.random() * Math.PI * 2;
+          var p0 = {
+            x: bh.cx + Math.cos(ra) * rr,
+            y: bh.cy + Math.sin(ra) * rr
+          };
 
           // Entry near lower-right viewport (wider corridor)
           var entryX = w * (0.66 + Math.random() * 0.30);
@@ -695,8 +704,17 @@
             y: h * (0.34 + Math.random() * 0.24) - bendSign * (h * (0.16 + 0.12 * Math.random()))
           };
 
-          // Endpoint: broad top-left corridor, with a slightly straighter-than-45deg tendency.
+          // Extra shaping controls for a quintic curve (degree 5).
           var p3 = {
+            x: w * (0.20 + Math.random() * 0.28),
+            y: h * (0.10 + Math.random() * 0.20) - bendSign * (h * (0.10 + 0.08 * Math.random()))
+          };
+          var p4 = {
+            x: w * (0.12 + Math.random() * 0.34) + dx * (w * 0.03),
+            y: -h * (0.34 + Math.random() * 0.72)
+          };
+          // Endpoint: broad top-left corridor, with a slightly straighter-than-45deg tendency.
+          var p5 = {
             x: w * (0.10 + Math.random() * 0.44) + dx * (w * 0.04),
             y: -h * (1.05 + Math.random() * 1.70)
           };
@@ -706,9 +724,18 @@
           for (var i = 0; i <= steps; i++) {
             var t = i / steps;
             var it = 1 - t;
+            var it2 = it * it;
+            var it3 = it2 * it;
+            var it4 = it3 * it;
+            var it5 = it4 * it;
+            var t2 = t * t;
+            var t3 = t2 * t;
+            var t4 = t3 * t;
+            var t5 = t4 * t;
             pts.push({
-              x: it * it * it * p0.x + 3 * it * it * t * p1.x + 3 * it * t * t * p2.x + t * t * t * p3.x,
-              y: it * it * it * p0.y + 3 * it * it * t * p1.y + 3 * it * t * t * p2.y + t * t * t * p3.y
+              // Quintic Bezier: B(t)=sum(C(5,k)*(1-t)^(5-k)*t^k*Pk)
+              x: it5 * p0.x + 5 * it4 * t * p1.x + 10 * it3 * t2 * p2.x + 10 * it2 * t3 * p3.x + 5 * it * t4 * p4.x + t5 * p5.x,
+              y: it5 * p0.y + 5 * it4 * t * p1.y + 10 * it3 * t2 * p2.y + 10 * it2 * t3 * p3.y + 5 * it * t4 * p4.y + t5 * p5.y
             });
           }
           return pts;
@@ -735,10 +762,14 @@
           var coreA = Math.min(1, 0.38 + 0.75 * fx.s) * a;
           var glowA = Math.min(1, 0.20 + 0.55 * fx.s) * a;
           var w0 = 0.75 + 1.35 * fx.s;
+          // Slightly dimmer for perceived depth (further in background).
+          coreA *= 0.78;
+          glowA *= 0.72;
+          var intensityBias = (typeof fx.intensityBias === 'number') ? fx.intensityBias : 1;
 
           // Glow pass with along-path variation (3D depth feel).
           ctx.shadowBlur = 26 + 70 * fx.s;
-          ctx.shadowColor = 'rgba(255, 180, 110,' + glowA.toFixed(3) + ')';
+          ctx.shadowColor = 'rgba(255, 255, 255,' + glowA.toFixed(3) + ')';
           var offx = parX * (fx.d || 0);
           var offy = parY * (fx.d || 0);
 
@@ -748,6 +779,12 @@
             var p0 = pts[i - 1];
             var p1 = pts[i];
             var tMid = (i - 0.5) / Math.max(1, segCount); // 0..1 along path
+            var yMid = ((p0.y + p1.y) * 0.5) + offy;
+            var upperFade = 1;
+            if (yMid < (h * 0.5)) {
+              // Fade progressively as rays move into the upper half.
+              upperFade = 0.35 + 0.65 * (yMid / Math.max(1, h * 0.5));
+            }
 
             // Bell curve around middle, with stronger contrast for depth perception.
             var bell = Math.exp(-Math.pow((tMid - 0.43) / 0.20, 2));
@@ -755,15 +792,26 @@
             var dp = Math.exp(-Math.pow((tMid - fx.depthCenter) / fx.depthWidth, 2));
             var depthPulse = fx.depthInvert ? (1.05 - fx.depthGain * dp * 0.45) : (0.80 + fx.depthGain * dp);
             var wMul = fx.wStart * (1 - tMid) + fx.wEnd * tMid + fx.wMid * bell;
-            var bMul = (fx.bStart * (1 - tMid) + fx.bEnd * tMid + fx.bMid * bell) * depthPulse;
+            var edgeDark = 0.30 + 0.70 * Math.sin(Math.PI * tMid); // darker edges, hotter center
+            var bMul = (fx.bStart * (1 - tMid) + fx.bEnd * tMid + fx.bMid * bell) * depthPulse * edgeDark * intensityBias * upperFade;
 
             // Glow segment
-            ctx.strokeStyle = 'rgba(255, 180, 110,' + Math.min(1, glowA * bMul).toFixed(3) + ')';
-            ctx.lineWidth = Math.max(0.35, w0 * 1.10 * wMul);
+            // Pure white aura with a white-hot core.
+            var glowAlphaSeg = Math.min(1, glowA * bMul);
+            ctx.strokeStyle = 'rgba(255, 255, 255,' + glowAlphaSeg.toFixed(3) + ')';
+            ctx.lineWidth = Math.max(0.0605, w0 * 0.2178 * wMul);
             ctx.beginPath();
             ctx.moveTo(p0.x + offx, p0.y + offy);
             ctx.lineTo(p1.x + offx, p1.y + offy);
             ctx.stroke();
+            if (bMul > 1.05) {
+              ctx.strokeStyle = 'rgba(255, 255, 255,' + Math.min(1, glowAlphaSeg * 0.35).toFixed(3) + ')';
+              ctx.lineWidth = Math.max(0.0363, w0 * 0.0968 * wMul);
+              ctx.beginPath();
+              ctx.moveTo(p0.x + offx, p0.y + offy);
+              ctx.lineTo(p1.x + offx, p1.y + offy);
+              ctx.stroke();
+            }
           }
 
           // Core pass (white-hot) with same profile variation
@@ -772,13 +820,19 @@
             var q0 = pts[j - 1];
             var q1 = pts[j];
             var tMid2 = (j - 0.5) / Math.max(1, segCount);
+            var yMid2 = ((q0.y + q1.y) * 0.5) + offy;
+            var upperFade2 = 1;
+            if (yMid2 < (h * 0.5)) {
+              upperFade2 = 0.35 + 0.65 * (yMid2 / Math.max(1, h * 0.5));
+            }
             var bell2 = Math.exp(-Math.pow((tMid2 - 0.43) / 0.20, 2));
             var dp2 = Math.exp(-Math.pow((tMid2 - fx.depthCenter) / fx.depthWidth, 2));
             var depthPulse2 = fx.depthInvert ? (1.08 - fx.depthGain * dp2 * 0.50) : (0.78 + fx.depthGain * 1.12 * dp2);
             var wMul2 = fx.wStart * (1 - tMid2) + fx.wEnd * tMid2 + fx.wMid * bell2;
-            var bMul2 = (fx.bStart * (1 - tMid2) + fx.bEnd * tMid2 + fx.bMid * bell2) * depthPulse2;
+            var edgeDark2 = 0.26 + 0.74 * Math.sin(Math.PI * tMid2);
+            var bMul2 = (fx.bStart * (1 - tMid2) + fx.bEnd * tMid2 + fx.bMid * bell2) * depthPulse2 * edgeDark2 * (0.92 + intensityBias * 0.18) * upperFade2;
             ctx.strokeStyle = 'rgba(255, 255, 255,' + Math.min(1, coreA * bMul2).toFixed(3) + ')';
-            ctx.lineWidth = Math.max(0.26, w0 * 0.82 * wMul2);
+            ctx.lineWidth = Math.max(0.04235, w0 * 0.1573 * wMul2);
             ctx.beginPath();
             ctx.moveTo(q0.x + offx, q0.y + offy);
             ctx.lineTo(q1.x + offx, q1.y + offy);
@@ -1009,8 +1063,66 @@
           // 3) Front half track
           drawDiskHalf(true);
 
+          // Final top coat: force the foreground lip above all other disk bands.
+          ctx.globalCompositeOperation = 'source-over';
+          ctx.globalAlpha = 1;
+          ctx.lineCap = 'round';
+          ctx.shadowBlur = lp ? (24 + 70 * s) : (60 + 180 * s);
+          ctx.shadowColor = 'rgba(255, 210, 150, 0.92)';
+          ctx.strokeStyle = 'rgba(255, 255, 252, 0.98)';
+          ctx.lineWidth = Math.max(lp ? 1.6 : 2.6, eventHorizonR * (lp ? 0.07 : 0.11));
+          ctx.beginPath();
+          ctx.ellipse(0, 0, diskA * 0.985, diskB * 0.88, tilt, Math.PI, Math.PI * 2);
+          ctx.stroke();
+          ctx.shadowBlur = 0;
+
           ctx.restore();
           ctx.globalAlpha = 1;
+        }
+
+        function drawForegroundDiskTop(bh) {
+          var lp = isLowPowerDevice();
+          var s = bh.s;
+          var eventHorizonR = bh.horizonR * 2.2;
+          var tilt = (-Math.PI / 4) + bh.rot;
+          var diskA = eventHorizonR * 1.30;
+          var diskB = eventHorizonR * 0.19;
+          var startAngle = Math.PI;
+          var endAngle = Math.PI * 2;
+
+          ctx.save();
+          ctx.translate(bh.cx, bh.cy);
+          ctx.globalCompositeOperation = 'source-over';
+          ctx.globalAlpha = 1;
+          ctx.lineCap = 'round';
+
+          // Re-draw full foreground stack as the top-most layer.
+          ctx.beginPath();
+          ctx.ellipse(0, 0, diskA, diskB, tilt, startAngle, endAngle);
+          ctx.strokeStyle = 'rgba(255, 142, 74, 0.98)';
+          ctx.lineWidth = Math.max(lp ? 4.0 : 6.0, eventHorizonR * (lp ? 0.18 : 0.26));
+          ctx.shadowBlur = lp ? (40 + 90 * s) : (90 + 220 * s);
+          ctx.shadowColor = 'rgba(255, 62, 12, 0.95)';
+          ctx.stroke();
+
+          ctx.beginPath();
+          ctx.ellipse(0, 0, diskA * 0.992, diskB * 0.92, tilt, startAngle, endAngle);
+          ctx.strokeStyle = 'rgba(255, 106, 42, 0.96)';
+          ctx.lineWidth = Math.max(lp ? 2.6 : 5.0, eventHorizonR * (lp ? 0.10 : 0.20));
+          ctx.shadowBlur = lp ? (26 + 70 * s) : (70 + 170 * s);
+          ctx.shadowColor = 'rgba(255, 76, 18, 0.94)';
+          ctx.stroke();
+
+          ctx.beginPath();
+          ctx.ellipse(0, 0, diskA * 0.985, diskB * 0.88, tilt, startAngle, endAngle);
+          ctx.strokeStyle = 'rgba(255, 255, 246, 1)';
+          ctx.lineWidth = Math.max(lp ? 2.0 : 3.8, eventHorizonR * (lp ? 0.09 : 0.18));
+          ctx.shadowBlur = lp ? (22 + 56 * s) : (60 + 150 * s);
+          ctx.shadowColor = 'rgba(255, 200, 120, 0.95)';
+          ctx.stroke();
+
+          ctx.shadowBlur = 0;
+          ctx.restore();
         }
 
         function respawnStar(s, bh, now) {
@@ -1159,11 +1271,11 @@
               // so authentic bursts still happen from consumed particles.
               var topBoost = (1 - scrollProgress) * (0.22 + 0.20 * (1 - bh.ts));
               var offscreenBelow = clamp01((bh.cy - h) / Math.max(1, bh.horizonR * 2.6));
-              var captureRadius = bh.horizonR * ((0.96 + topBoost + offscreenBelow * 0.9) + 0.08 * Math.sin((now * 0.001) + i));
+              var captureRadius = bh.horizonR * ((1.14 + topBoost + offscreenBelow * 1.05) + 0.08 * Math.sin((now * 0.001) + i));
               // Funnel capture: if BH is off-screen, nearby inward-moving particles are
               // considered captured before crossing the tiny visible horizon.
               var vr = ((s.vx * dxh) + (s.vy * dyh)) / d; // radial velocity (>0 = moving away)
-              var funnelCapture = offscreenBelow > 0.05 && d < (bh.horizonR * (2.4 + offscreenBelow * 2.8)) && vr < -0.015;
+              var funnelCapture = offscreenBelow > 0.05 && d < (bh.horizonR * (2.8 + offscreenBelow * 3.2)) && vr < -0.012;
               if (d < captureRadius || funnelCapture) {
                 // Scheduler controls burst timing to prevent visual "ray dumps".
                 // Near-horizon particles are strongly damped so they linger/circle
@@ -1179,7 +1291,7 @@
               var fall = 1 / (1 + Math.pow(d / (minWH * 0.85), 2));
               // Extra early/top boost so first screen still produces authentic bursts.
               var earlyTopBoost = (1 - scrollProgress) * (1 - bh.ts) * 0.55;
-              var basePull = (0.0011 + 0.0038 * bh.ts) * (0.78 + 0.68 * bh.s) * (1 + earlyTopBoost);
+              var basePull = 2 * (0.0017 + 0.0056 * bh.ts) * (0.90 + 0.88 * bh.s) * (1 + earlyTopBoost);
               s.vx -= ndxAll * basePull * fall;
               s.vy -= ndyAll * basePull * fall;
 
@@ -1198,12 +1310,12 @@
                 var ndx = dxh / d;
                 var ndy = dyh / d;
                 var proximity = 1 - clamp01(d / bh.influenceR); // 0 far -> 1 near
-                var pull = (0.016 + 0.030 * bh.s) * proximity * proximity;
+                var pull = 2 * (0.023 + 0.040 * bh.s) * proximity * proximity;
                 // Radial pull
                 s.vx -= ndx * pull;
                 s.vy -= ndy * pull;
                 // Tangential swirl (gives accretion-like motion)
-                var swirl = (0.014 + 0.026 * bh.s) * proximity;
+                var swirl = (0.017 + 0.030 * bh.s) * proximity;
                 s.vx += -ndy * swirl;
                 s.vy += ndx * swirl;
                 // Heat/brightness boost near disk
@@ -1350,6 +1462,11 @@
               ctx.stroke();
             }
             ctx.restore();
+          }
+
+          // Absolute final foreground pass so the front disk never sits under perimeter rings.
+          if (bhVisible) {
+            drawForegroundDiskTop(bh);
           }
 
           window.requestAnimationFrame(tick);

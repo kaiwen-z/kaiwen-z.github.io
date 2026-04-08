@@ -490,7 +490,7 @@
           var last = s.hist.length ? s.hist[s.hist.length - 1] : null;
           if (!last || Math.abs(last.x - s.x) + Math.abs(last.y - s.y) > 0.35) {
             s.hist.push({ x: s.x, y: s.y });
-            if (s.hist.length > 14) s.hist.shift();
+            if (s.hist.length > 10) s.hist.shift();
           }
         }
 
@@ -517,7 +517,7 @@
             depthInvert: (Math.random() < 0.5)
           });
           // Keep list bounded
-          if (flashes.length > 26) flashes.splice(0, flashes.length - 26);
+          if (flashes.length > 14) flashes.splice(0, flashes.length - 14);
         }
         
         function scheduleNextRandomRay(now, liveRatio) {
@@ -902,6 +902,11 @@
 
           ctx.save();
           ctx.translate(bh.cx, bh.cy);
+          // Tight clip around BH rendering region to reduce overdraw.
+          var clipPad = eventHorizonR * 2.8;
+          ctx.beginPath();
+          ctx.rect(-clipPad, -clipPad, clipPad * 2, clipPad * 2);
+          ctx.clip();
 
           // Legacy full background ellipse pass (from previous implementation).
           if (drawLegacyBackGlow) {
@@ -952,14 +957,23 @@
           ctx.stroke();
 
           if (drawOuterHorizonHalo) {
-            // Outer deep-red halo that fades into space.
-            ctx.globalAlpha = Math.min(1, 0.54 + 0.20 * s);
-            ctx.shadowBlur = (340 + 860 * s) * q;
-            ctx.shadowColor = 'rgba(255, 44, 10, 0.98)';
-            ctx.strokeStyle = 'rgba(220, 68, 34, 0.82)';
-            ctx.lineWidth = Math.max(6.2, eventHorizonR * 0.30);
+            // Outer deep-red halo: layered alpha strokes (cheaper than one huge blur pass).
+            ctx.globalAlpha = Math.min(1, 0.42 + 0.16 * s);
+            ctx.shadowBlur = (120 + 260 * s) * q;
+            ctx.shadowColor = 'rgba(255, 56, 16, 0.96)';
+            ctx.strokeStyle = 'rgba(220, 68, 34, 0.72)';
+            ctx.lineWidth = Math.max(4.6, eventHorizonR * 0.22);
             ctx.beginPath();
             ctx.arc(0, 0, eventHorizonR * 1.036, 0, Math.PI * 2);
+            ctx.stroke();
+
+            ctx.globalAlpha = Math.min(1, 0.28 + 0.12 * s);
+            ctx.shadowBlur = (170 + 320 * s) * q;
+            ctx.shadowColor = 'rgba(255, 40, 10, 0.88)';
+            ctx.strokeStyle = 'rgba(200, 56, 30, 0.56)';
+            ctx.lineWidth = Math.max(3.2, eventHorizonR * 0.16);
+            ctx.beginPath();
+            ctx.arc(0, 0, eventHorizonR * 1.048, 0, Math.PI * 2);
             ctx.stroke();
 
             // Subtle exotic chroma fringe at the far edge.

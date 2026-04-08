@@ -559,6 +559,10 @@
 
     /* --- RESPONSIVE --- */
     @media (max-width: 700px) {
+      .portfolio-page {
+        padding-top: 18px;
+      }
+
       .project-card {
         grid-template-columns: 1fr;
       }

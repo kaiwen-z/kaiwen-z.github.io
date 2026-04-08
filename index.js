@@ -26,12 +26,8 @@
           if ('scrollRestoration' in history) history.scrollRestoration = 'manual';
         } catch (e) {}
 
-        // If the URL has an anchor (e.g. #projects), clear it so reload doesn't auto-jump.
-        try {
-          if (window.location.hash) {
-            history.replaceState(null, '', window.location.pathname + window.location.search);
-          }
-        } catch (e) {}
+        // Preserve intentional deep links (e.g. index.html#projects from other pages).
+        if (window.location.hash) return;
 
         // Do the actual reset after the browser has had a chance to restore.
         window.setTimeout(function () {

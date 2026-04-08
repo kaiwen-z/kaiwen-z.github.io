@@ -193,9 +193,53 @@
         if (!prefersReducedMotion()) btn.classList.add('is-pulsing');
 
         var autoRan = false;
+        var autoCancelled = false;
+        var autoExplosionTimer = 0;
+        var autoScrollTimer = 0;
+
+        function cancelAutoSequence() {
+          if (autoCancelled) return;
+          autoCancelled = true;
+          if (autoExplosionTimer) {
+            window.clearTimeout(autoExplosionTimer);
+            autoExplosionTimer = 0;
+          }
+          if (autoScrollTimer) {
+            window.clearTimeout(autoScrollTimer);
+            autoScrollTimer = 0;
+          }
+        }
+
+        function hasSignificantScroll() {
+          var doc = document.documentElement;
+          var maxScroll = Math.max(0, (doc.scrollHeight || 0) - (window.innerHeight || 0));
+          if (maxScroll <= 0) return false;
+          return (window.scrollY || 0) >= (maxScroll / 3);
+        }
+
+        // Non-scroll user inputs cancel auto explosion + auto scroll.
+        function onUserInputCancel(e) {
+          if (!e) return;
+          if (e.target && e.target.closest && e.target.closest('#view-projects-btn')) return;
+          cancelAutoSequence();
+        }
+
+        // Scroll only cancels after significant movement (~1/3 page).
+        function onScrollCancelCheck() {
+          if (hasSignificantScroll()) cancelAutoSequence();
+        }
+
+        window.addEventListener('pointerdown', onUserInputCancel, { passive: true });
+        window.addEventListener('keydown', onUserInputCancel);
+        window.addEventListener('touchstart', onUserInputCancel, { passive: true });
+        document.addEventListener('click', function (e) {
+          if (e.target && e.target.closest && e.target.closest('a')) onUserInputCancel(e);
+        });
+        window.addEventListener('scroll', onScrollCancelCheck, { passive: true });
 
         btn.addEventListener('pointerdown', function () {
           if (window.__fxEnabled === false) return;
+          cancelAutoSequence();
           autoRan = true; // user interacted; don't auto-trigger again
           press(btn);     // burst on press-down
         });
@@ -211,13 +255,14 @@
         });
 
         // Auto explosion at 3s, then scroll at 3.5s
-        window.setTimeout(function () {
-          if (window.__fxEnabled === false) return;
+        autoExplosionTimer = window.setTimeout(function () {
+          if (window.__fxEnabled === false || autoCancelled) return;
           if (!autoRan) press(btn);
         }, 3000);
 
-        window.setTimeout(function () {
-          if (window.__fxEnabled === false) return;
+        autoScrollTimer = window.setTimeout(function () {
+          if (window.__fxEnabled === false || autoCancelled) return;
+          if (hasSignificantScroll()) return;
           safeScrollToProjects();
         }, 3500);
       });

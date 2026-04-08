@@ -23,6 +23,21 @@
       min-height: 100vh;
     }
 
+    /* Scroll-driven cinematic end fade (JS sets --end-fade: 0..1) */
+    body {
+      --end-fade: 0;
+    }
+
+    .portfolio-page .nebula-layer {
+      opacity: calc(0.55 * (1 - var(--end-fade)));
+      filter: blur(18px) saturate(calc(1.2 - 0.55 * var(--end-fade))) brightness(calc(1 - 0.35 * var(--end-fade)));
+    }
+
+    .portfolio-page .ambient-stars {
+      opacity: calc(0.95 * (1 - 0.10 * var(--end-fade)));
+      filter: saturate(calc(1 - 0.15 * var(--end-fade)));
+    }
+
     .alias {
       color: #888888;       /* Slightly grey color */
       font-size: 0.5em;     /* Makes text half the size of the main header */
@@ -36,19 +51,37 @@
 
     /* Portfolio homepage: brighter body / secondary text than global defaults */
     .portfolio-page {
-      --text: #ececef;
-      --text-muted: #b4b4bf;
+      --text: #f4f4f7;
+      --text-muted: #cfcfdd;
     }
 
     .portfolio-page .alias {
       color: #a2a2ad;
     }
 
+    /* Improve readability against nebula/stars by lifting text contrast */
+    .portfolio-page .hero-desc,
+    .portfolio-page .exp-desc,
+    .portfolio-page .project-info p,
+    .portfolio-page .project-link,
+    .portfolio-page .section-label,
+    .portfolio-page .section-title,
+    .portfolio-page .about-heading,
+    .portfolio-page .about-title {
+      text-shadow:
+        0 1px 0 rgba(0, 0, 0, 0.35),
+        0 0 18px rgba(0, 0, 0, 0.35);
+    }
+
     /* --- NAV --- */
     nav {
-      position: sticky;
+      position: fixed;
       top: 0;
-      z-index: 100;
+      left: 0;
+      right: 0;
+      z-index: 1000;
+      transform: none;
+      filter: none;
       backdrop-filter: blur(20px);
       -webkit-backdrop-filter: blur(20px);
       background: rgba(15, 15, 19, 0.8);

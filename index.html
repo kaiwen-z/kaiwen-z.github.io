@@ -273,8 +273,36 @@
 
   <section class="fx-blurb" aria-label="Background effects note">
     <p>
-      In nature, accreting black holes are among the most efficient known converters of infalling mass into radiant energy, and magnetized accretion systems can launch relativistic jets that carry matter outward at near light speed.
+      Black holes are some of the most efficient converters of mass into energy, they often eject energized particles from their accretion disk at near light speeds.
+      <br>
+      <br>
+      The background renderer written in basic javascript uses adaptive quality controls to keep frame pacing stable across devices.
+      Heavy black hole shading is cached into an offscreen sprite and reused during scroll, which cuts expensive redraw passes.
     </p>
+    <!--
+      Performance README (ambient stars + black hole FX)
+      - Prioritize smooth frame pacing over max visual intensity.
+      - Detect weak hardware early using CPU core count and device memory.
+      - Use adaptive quality at runtime based on measured frame budget.
+      - Respect reduced motion and global FX toggle as first class controls.
+      - Cap render rate with targetFrameMs instead of drawing every RAF tick.
+      - Back off updates when the tab is hidden to avoid wasted work.
+      - Clamp DPR to reduce pixel fill cost on high density displays.
+      - Seed stars once, then preserve and scale state on resize.
+      - Keep hot loops allocation light and avoid temporary arrays.
+      - Bound effect lifetimes and list sizes so work cannot grow unbounded.
+      - Draw expensive halo passes on a stride when under load.
+      - Lower blur radii and effect strength in low power mode.
+      - Skip black hole draws when fully off screen.
+      - Cache the black hole as an offscreen sprite to avoid per frame heavy blur stacks.
+      - Keep sprite cache keys stable during scroll to avoid rebuild churn.
+      - Reuse and scale cached sprite at draw time for smooth motion.
+      - Smooth black hole draw position with lerp to hide scroll step jitter.
+      - Keep a direct draw fallback path if sprite canvas creation fails.
+      - Use passive listeners for scroll and touch where possible.
+      - Use IntersectionObserver for reveal logic instead of scroll polling.
+      - Prefer early returns in all animation and interaction paths.
+    -->
   </section>
 
   <footer>

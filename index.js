@@ -237,7 +237,19 @@
         });
         window.addEventListener('scroll', onScrollCancelCheck, { passive: true });
 
+        function clearTextSelection() {
+          try {
+            var sel = window.getSelection && window.getSelection();
+            if (sel && sel.rangeCount) sel.removeAllRanges();
+          } catch (e) {}
+        }
+
+        btn.addEventListener('selectstart', function (e) {
+          e.preventDefault();
+        });
+
         btn.addEventListener('pointerdown', function () {
+          clearTextSelection();
           if (window.__fxEnabled === false) return;
           cancelAutoSequence();
           autoRan = true; // user interacted; don't auto-trigger again
@@ -472,7 +484,7 @@
         var burstClusterRemaining = 0;
         var simStartAt = (performance.now ? performance.now() : Date.now());
         var consumeAllMs = 5 * 60 * 1000; // ~5 minutes until everything is consumed
-        var targetFrameMs = isLowPowerDevice() ? (1000 / 30) : (1000 / 45);
+        var targetFrameMs = isLowPowerDevice() ? (1000 / 40) : (1000 / 60);
         var lastFrameAt = 0;
         var framePerfQ = 1;
         var lastLowPowerState = isLowPowerDevice();
@@ -481,6 +493,9 @@
         var starsInitialized = false;
         var prevW = 0;
         var prevH = 0;
+        var blackHoleSpriteCache = null;
+        var bhDrawX = null;
+        var bhDrawY = null;
 
         function clamp01(x) { return x < 0 ? 0 : x > 1 ? 1 : x; }
         function smoothstep(a, b, x) {
@@ -505,7 +520,7 @@
           w = window.innerWidth;
           h = window.innerHeight;
           dpr = Math.min(isLowPowerDevice() ? 1.1 : 1.5, window.devicePixelRatio || 1);
-          targetFrameMs = isLowPowerDevice() ? (1000 / 30) : (1000 / 45);
+          targetFrameMs = isLowPowerDevice() ? (1000 / 40) : (1000 / 60);
           canvas.width = Math.floor(w * dpr);
           canvas.height = Math.floor(h * dpr);
           canvas.style.width = w + 'px';
@@ -837,14 +852,15 @@
           var w0 = 0.75 + 1.35 * fx.s;
           // Slightly dimmer for perceived depth (further in background).
           coreA *= 0.78;
-          glowA *= 0.72;
+          glowA *= 0.864;
           var intensityBias = (typeof fx.intensityBias === 'number') ? fx.intensityBias : 1;
 
           // Glow pass with along-path variation (3D depth feel).
-          ctx.shadowBlur = 26 + 70 * fx.s;
+          ctx.shadowBlur = (26 + 70 * fx.s) * 1.2;
           ctx.shadowColor = 'rgba(255, 255, 255,' + glowA.toFixed(3) + ')';
           var offx = parX * (fx.d || 0);
           var offy = parY * (fx.d || 0);
+          var lowFlashDetail = isLowPowerDevice() || framePerfQ < 0.82;
 
           // Segment render so width/brightness can vary along trajectory.
           var segCount = pts.length - 1;
@@ -872,14 +888,14 @@
             // Pure white aura with a white-hot core.
             var glowAlphaSeg = Math.min(1, glowA * bMul);
             ctx.strokeStyle = 'rgba(255, 255, 255,' + glowAlphaSeg.toFixed(3) + ')';
-            ctx.lineWidth = Math.max(0.09075, w0 * 0.3267 * wMul);
+            ctx.lineWidth = Math.max(0.1089, w0 * 0.39204 * wMul);
             ctx.beginPath();
             ctx.moveTo(p0.x + offx, p0.y + offy);
             ctx.lineTo(p1.x + offx, p1.y + offy);
             ctx.stroke();
             if (bMul > 1.05) {
               ctx.strokeStyle = 'rgba(255, 255, 255,' + Math.min(1, glowAlphaSeg * 0.35).toFixed(3) + ')';
-              ctx.lineWidth = Math.max(0.05445, w0 * 0.1452 * wMul);
+              ctx.lineWidth = Math.max(0.06534, w0 * 0.17424 * wMul);
               ctx.beginPath();
               ctx.moveTo(p0.x + offx, p0.y + offy);
               ctx.lineTo(p1.x + offx, p1.y + offy);
@@ -905,7 +921,7 @@
             var edgeDark2 = 0.26 + 0.74 * Math.sin(Math.PI * tMid2);
             var bMul2 = (fx.bStart * (1 - tMid2) + fx.bEnd * tMid2 + fx.bMid * bell2) * depthPulse2 * edgeDark2 * (0.92 + intensityBias * 0.18) * upperFade2;
             ctx.strokeStyle = 'rgba(255, 255, 255,' + Math.min(1, coreA * bMul2).toFixed(3) + ')';
-            ctx.lineWidth = Math.max(0.063525, w0 * 0.23595 * wMul2);
+            ctx.lineWidth = Math.max(0.07623, w0 * 0.28314 * wMul2);
             ctx.beginPath();
             ctx.moveTo(q0.x + offx, q0.y + offy);
             ctx.lineTo(q1.x + offx, q1.y + offy);
@@ -1198,6 +1214,88 @@
           ctx.restore();
         }
 
+        function drawEinsteinRing(bh) {
+          if (reducedMotion || bh.s <= 0.06) return;
+          var lpRing = isLowPowerDevice();
+          ctx.save();
+          ctx.translate(bh.cx, bh.cy);
+          ctx.globalCompositeOperation = 'screen';
+          ctx.globalAlpha = Math.min(1, 0.34 + 0.56 * bh.s);
+          ctx.strokeStyle = 'rgba(255, 255, 255, 1)';
+          ctx.lineWidth = Math.max(lpRing ? 1.6 : 2.8, bh.horizonR * (lpRing ? 0.09 : 0.16));
+          ctx.beginPath();
+          ctx.arc(0, 0, bh.horizonR * (1.95 + 0.25 * bh.s), 0, Math.PI * 2);
+          ctx.stroke();
+
+          if (!lpRing) {
+            // Soft glow around ring
+            ctx.globalAlpha = Math.min(1, 0.26 + 0.44 * bh.s);
+            ctx.shadowBlur = 100 + 240 * bh.s;
+            ctx.shadowColor = 'rgba(255, 52, 6, 1)';
+            ctx.lineWidth = Math.max(2.2, bh.horizonR * 0.12);
+            ctx.strokeStyle = 'rgba(255, 96, 24, 0.98)';
+            ctx.beginPath();
+            ctx.arc(0, 0, bh.horizonR * (1.95 + 0.25 * bh.s), 0, Math.PI * 2);
+            ctx.stroke();
+
+            // Nuclear-hot outer accent for maximum warm contrast.
+            ctx.globalAlpha = Math.min(1, 0.22 + 0.38 * bh.s);
+            ctx.shadowBlur = 160 + 420 * bh.s;
+            ctx.shadowColor = 'rgba(255, 24, 0, 1)';
+            ctx.lineWidth = Math.max(2.8, bh.horizonR * 0.14);
+            ctx.strokeStyle = 'rgba(255, 70, 10, 0.98)';
+            ctx.beginPath();
+            ctx.arc(0, 0, bh.horizonR * (2.02 + 0.28 * bh.s), 0, Math.PI * 2);
+            ctx.stroke();
+          }
+          ctx.restore();
+        }
+
+        function getBlackHoleSprite(bh) {
+          var lp = isLowPowerDevice();
+          var ringEnabled = (!reducedMotion && bh.s > 0.06) ? 1 : 0;
+          var viewportBucket = Math.max(1, Math.round(Math.min(w, h) / 64));
+          // Keep key stable while scrolling so we don't rebuild the sprite constantly.
+          var key = [lp ? 1 : 0, ringEnabled, viewportBucket].join('|');
+          if (blackHoleSpriteCache && blackHoleSpriteCache.key === key) return blackHoleSpriteCache;
+
+          var eventHorizonR = bh.horizonR * 2.2;
+          var radius = Math.max(120, eventHorizonR * 4.6);
+          var size = Math.ceil(radius * 2);
+          var spriteCanvas = document.createElement('canvas');
+          spriteCanvas.width = size;
+          spriteCanvas.height = size;
+          var spriteCtx = spriteCanvas.getContext('2d');
+          if (!spriteCtx) return null;
+
+          var oldCtx = ctx;
+          ctx = spriteCtx;
+          var localBh = {
+            s: bh.s,
+            ts: bh.ts,
+            cx: radius,
+            cy: radius,
+            diskR: bh.diskR,
+            horizonR: bh.horizonR,
+            influenceR: bh.influenceR,
+            squish: bh.squish,
+            rot: bh.rot
+          };
+
+          drawAccretionDisk(localBh, 0, lp ? 0.74 : 1);
+          drawEinsteinRing(localBh);
+          drawForegroundDiskTop(localBh);
+          ctx = oldCtx;
+
+          blackHoleSpriteCache = {
+            key: key,
+            canvas: spriteCanvas,
+            radius: radius,
+            sourceHorizonR: bh.horizonR
+          };
+          return blackHoleSpriteCache;
+        }
+
         function respawnStar(s, bh, now) {
           // Respawn away from the hole so "consumed" feels final.
           var pad = 30;
@@ -1243,7 +1341,7 @@
           var frameBudgetMs = lastFrameAt ? Math.max(0, now - lastFrameAt) : targetFrameMs;
           lastFrameAt = now;
 
-          var shouldUseLowPowerNow = frameBudgetMs > 22.22; // below ~45 FPS
+          var shouldUseLowPowerNow = frameBudgetMs > 20; // below ~50 FPS
           if (!window.__autoFrameLowPower && shouldUseLowPowerNow) {
             window.__autoFrameLowPower = true;
             autoLowPowerEnteredAt = now;
@@ -1495,51 +1593,36 @@
 
           var bhVisible = (bh.cy + bh.diskR) > -120 && (bh.cy - bh.diskR) < (h + 180);
 
-          // Draw black hole only when near viewport to reduce expensive blur passes.
+          // Draw black hole only when near viewport; use cached sprite to avoid heavy per-frame blur work.
           if (bhVisible) {
-            drawAccretionDisk(bh, now, perfQ);
-          }
-
-          // Einstein ring highlight (only when BH is near viewport)
-          if (!reducedMotion && bhVisible && bh.s > 0.06) {
-            var lpRing = isLowPowerDevice();
-            ctx.save();
-            ctx.translate(bh.cx, bh.cy);
-            ctx.globalCompositeOperation = 'screen';
-            ctx.globalAlpha = Math.min(1, 0.34 + 0.56 * bh.s);
-            ctx.strokeStyle = 'rgba(255, 255, 255, 1)';
-            ctx.lineWidth = Math.max(lpRing ? 1.6 : 2.8, bh.horizonR * (lpRing ? 0.09 : 0.16));
-            ctx.beginPath();
-            ctx.arc(0, 0, bh.horizonR * (1.95 + 0.25 * bh.s), 0, Math.PI * 2);
-            ctx.stroke();
-
-            if (!lpRing) {
-              // Soft glow around ring
-              ctx.globalAlpha = Math.min(1, 0.26 + 0.44 * bh.s);
-              ctx.shadowBlur = 100 + 240 * bh.s;
-              ctx.shadowColor = 'rgba(255, 52, 6, 1)';
-              ctx.lineWidth = Math.max(2.2, bh.horizonR * 0.12);
-              ctx.strokeStyle = 'rgba(255, 96, 24, 0.98)';
-              ctx.beginPath();
-              ctx.arc(0, 0, bh.horizonR * (1.95 + 0.25 * bh.s), 0, Math.PI * 2);
-              ctx.stroke();
-
-              // Nuclear-hot outer accent for maximum warm contrast.
-              ctx.globalAlpha = Math.min(1, 0.22 + 0.38 * bh.s);
-              ctx.shadowBlur = 160 + 420 * bh.s;
-              ctx.shadowColor = 'rgba(255, 24, 0, 1)';
-              ctx.lineWidth = Math.max(2.8, bh.horizonR * 0.14);
-              ctx.strokeStyle = 'rgba(255, 70, 10, 0.98)';
-              ctx.beginPath();
-              ctx.arc(0, 0, bh.horizonR * (2.02 + 0.28 * bh.s), 0, Math.PI * 2);
-              ctx.stroke();
+            var bhSprite = getBlackHoleSprite(bh);
+            if (bhSprite && bhSprite.canvas) {
+              var scale = bhSprite.sourceHorizonR > 0 ? (bh.horizonR / bhSprite.sourceHorizonR) : 1;
+              if (!isFinite(scale) || scale <= 0) scale = 1;
+              var drawRadius = bhSprite.radius * scale;
+              if (bhDrawX === null || bhDrawY === null) {
+                bhDrawX = bh.cx;
+                bhDrawY = bh.cy;
+              } else {
+                // Smooth wheel/touchpad scroll deltas so the static BH appears steadier.
+                var lerp = 0.25;
+                bhDrawX += (bh.cx - bhDrawX) * lerp;
+                bhDrawY += (bh.cy - bhDrawY) * lerp;
+              }
+              ctx.imageSmoothingEnabled = true;
+              ctx.drawImage(
+                bhSprite.canvas,
+                bhDrawX - drawRadius,
+                bhDrawY - drawRadius,
+                drawRadius * 2,
+                drawRadius * 2
+              );
+            } else {
+              // Fallback path if sprite context creation fails.
+              drawAccretionDisk(bh, now, perfQ);
+              drawEinsteinRing(bh);
+              drawForegroundDiskTop(bh);
             }
-            ctx.restore();
-          }
-
-          // Absolute final foreground pass so the front disk never sits under perimeter rings.
-          if (bhVisible) {
-            drawForegroundDiskTop(bh);
           }
 
           window.requestAnimationFrame(tick);

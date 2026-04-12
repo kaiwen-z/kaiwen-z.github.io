@@ -292,9 +292,24 @@
         return hardwareLowPower || window.__autoFrameLowPower;
       };
 
+      var FX_STORAGE_KEY = 'kaiwen-z.github.io/fx-enabled';
+
+      function readStoredFxEnabled() {
+        try {
+          var raw = localStorage.getItem(FX_STORAGE_KEY);
+          if (raw === '0' || raw === 'false') return false;
+          if (raw === '1' || raw === 'true') return true;
+        } catch (e) {}
+        return null;
+      }
+
       function setFxEnabled(enabled) {
         window.__fxEnabled = !!enabled;
         document.body.classList.toggle('fx-off', !window.__fxEnabled);
+
+        try {
+          localStorage.setItem(FX_STORAGE_KEY, window.__fxEnabled ? '1' : '0');
+        } catch (e) {}
 
         var btn = document.getElementById('fx-toggle');
         if (btn) {
@@ -304,11 +319,14 @@
       }
 
       window.__setFxEnabled = setFxEnabled;
-      window.__fxEnabled = true;
+
+      var storedFx = readStoredFxEnabled();
+      setFxEnabled(storedFx === null ? true : storedFx);
 
       window.addEventListener('DOMContentLoaded', function () {
         var btn = document.getElementById('fx-toggle');
         if (btn) {
+          setFxEnabled(window.__fxEnabled);
           btn.addEventListener('click', function () {
             setFxEnabled(!(btn.getAttribute('aria-pressed') === 'true'));
           });
